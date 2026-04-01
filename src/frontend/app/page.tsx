@@ -20,8 +20,12 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero with blurred background */}
-      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a2f 30%, #2d5a3f 60%, #1e293b 100%)' }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cpath d=\"M30 5L35 20H45L37 28L40 43L30 35L20 43L23 28L15 20H25Z\" fill=\"white\" opacity=\"0.3\"/%3E%3C/svg%3E')", backgroundSize: '120px 120px' }} />
+      <section className="relative overflow-hidden hero-fallback">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/hero-bg.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-navy-900/40" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 md:py-36 text-center">
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 drop-shadow-lg">
             Глэмпинги, гостевые дома и бани
