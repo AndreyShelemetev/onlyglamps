@@ -1,0 +1,10 @@
+export { BlockBasicInfo } from "./BlockBasicInfo";
+export { BlockParams } from "./BlockParams";
+export { BlockPhotos } from "./BlockPhotos";
+export { BlockAmenities } from "./BlockAmenities";
+export { BlockTags } from "./BlockTags";
+export { BlockTariffs } from "./BlockTariffs";
+export { BlockCalendar } from "./BlockCalendar";
+export { BlockSource } from "./BlockSource";
+export { BlockSeo } from "./BlockSeo";
+export * from "./types";

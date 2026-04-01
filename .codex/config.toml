@@ -1,0 +1,26 @@
+[project]
+name = "onlyglamps"
+description = "Каталог глэмпингов, гостевых домов и бань посуточно"
+
+[commands]
+start = "docker compose up --build"
+stop = "docker compose down"
+migrate = "cd src/backend && dotnet ef database update --project OnlyGlamps.Api"
+backend-dev = "cd src/backend && dotnet run --project OnlyGlamps.Api"
+frontend-dev = "cd src/frontend && npm run dev"
+
+[rules]
+# Не менять без отдельной задачи
+protected_files = [
+    "docker-compose.yml",
+    "docker-compose.override.yml",
+    "nginx/nginx.conf",
+    ".env.example"
+]
+
+# SEO: эти файлы критичны
+seo_sensitive = [
+    "src/frontend/app/**/layout.tsx",
+    "src/frontend/app/**/page.tsx",
+    "src/backend/OnlyGlamps.Api/Controllers/SeoController.cs"
+]

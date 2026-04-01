@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "read_file",
+      "write_file",
+      "run_terminal",
+      "search"
+    ],
+    "deny": [
+      "delete_file_without_confirmation"
+    ]
+  },
+  "context": {
+    "always_include": [
+      "CLAUDE.md",
+      "CONVENTIONS.md",
+      "ARCHITECTURE.md"
+    ]
+  },
+  "rules": {
+    "protected_patterns": [
+      "docker-compose.yml",
+      "docker-compose.override.yml",
+      "nginx/nginx.conf"
+    ],
+    "seo_check_required": [
+      "src/frontend/app/**/page.tsx",
+      "src/frontend/app/**/layout.tsx"
+    ]
+  }
+}

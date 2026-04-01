@@ -1,0 +1,77 @@
+# Параметры фильтрации — OnlyGlamps MVP
+# Файл описывает параметры, по которым строится фильтр каталога объектов.
+# Используется как справочник для backend и frontend.
+
+## Локация
+- region          — slug региона (например: mari-el, tatarstan)
+- city            — slug города/района (например: yoshkar-ola)
+
+## Тип объекта
+- type            — slug типа (glempingi, gostevye-doma, bani)
+
+## Вместимость
+- guests_min      — минимальная вместимость гостей (int)
+- guests_max      — максимальная вместимость гостей (int)
+- beds_min        — минимальное количество спальных мест (int)
+
+## Цена
+- price_min       — минимальная цена за сутки, ₽ (int)
+- price_max       — максимальная цена за сутки, ₽ (int)
+
+## Удобства (amenities) — передаются как массив slug или ID
+- amenities       — список slug удобств через запятую
+  Доступные значения:
+  - banya          (баня)
+  - sauna          (сауна)
+  - chan           (чан)
+  - kupel          (купель)
+  - besedka        (беседка)
+  - mangal         (мангал)
+  - parkovka       (парковка)
+  - wifi           (Wi-Fi)
+  - kukhnya        (кухня)
+  - deti           (можно с детьми)
+  - pitomtsy       (можно с питомцами)
+  - u-vody         (у воды)
+  - u-lesa         (у леса)
+  - terrasa        (терраса)
+  - konditsioner   (кондиционер)
+  - otoplenie      (отопление)
+  - dush           (душ)
+  - tualet         (туалет)
+  - kamin          (камин)
+
+## Параметры объекта
+- is_whole        — можно снять целиком (bool: true/false)
+- area_min        — минимальная площадь, м² (int)
+- rooms_min       — минимальное количество комнат (int)
+
+## Даты
+- checkin         — дата заезда (YYYY-MM-DD)
+- checkout        — дата выезда (YYYY-MM-DD)
+
+## Теги (быстрые характеристики)
+- tags            — список slug тегов через запятую
+
+## Дополнительно
+- sort            — сортировка:
+  - price_asc     (по цене, дешевле)
+  - price_desc    (по цене, дороже)
+  - rating        (по рейтингу)
+  - newest        (по дате добавления)
+- has_reviews     — только с отзывами (bool)
+- has_photos      — только с фото (bool)
+- status          — только опубликованные (для публичного каталога всегда published)
+
+## Пагинация
+- page            — номер страницы (int, начинается с 1)
+- page_size       — количество объектов на странице (int, по умолчанию 20, макс 100)
+
+## Формат запроса
+# GET /api/objects?region=mari-el&type=glempingi&price_min=3000&price_max=10000&amenities=banya,wifi&sort=price_asc&page=1
+
+## Примечания
+# - Фильтры через GET-параметры НЕ индексируются (noindex).
+# - Чистые URL (без GET) индексируются.
+# - Canonical всегда = чистый URL без GET-параметров.
+# - Пустая выдача — noindex.

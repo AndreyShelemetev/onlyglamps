@@ -1,0 +1,11 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "npx next": true,
+        "npx tsc": true,
+        "node_modules/.bin/tsc": true,
+        "npm install": true,
+        "git remote": true,
+        "git config": true,
+        "git init": true
+    }
+}
