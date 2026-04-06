@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/auth";
 
 interface LoginModalProps {
@@ -23,8 +24,13 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +48,8 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   };
 
   if (user) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40" onClick={onClose}>
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-900">Личный кабинет</h2>
@@ -92,13 +98,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             Выйти
           </button>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 overflow-y-auto p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex justify-between items-center p-6 pb-0">
           <h2 className="text-xl font-bold text-gray-900">Вход</h2>
@@ -217,6 +224,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
