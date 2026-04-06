@@ -63,8 +63,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Auto-create DB and seed in Development
-if (app.Environment.IsDevelopment())
+// Auto-create DB and seed
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

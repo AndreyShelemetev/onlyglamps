@@ -6,6 +6,9 @@
         "npm install": true,
         "git remote": true,
         "git config": true,
-        "git init": true
+        "git init": true,
+        "git add": true,
+        "git commit": true,
+        "git push": true
     }
 }
