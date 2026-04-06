@@ -1,0 +1,32 @@
+# Production overrides — use with:
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# НЕ применяет docker-compose.override.yml (dev порты, pgadmin)
+
+services:
+  frontend:
+    environment:
+      - NODE_ENV=production
+      - BACKEND_URL=http://backend:5000
+
+  backend:
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Cors__Origins=https://onlyglamps.ru,http://onlyglamps.ru
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Storage__Endpoint=storage:9000
+      - Storage__AccessKey=${MINIO_ROOT_USER}
+      - Storage__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Storage__BucketName=onlyglamps
+      - Telegram__BotToken=${TELEGRAM_BOT_TOKEN}
+
+  nginx:
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+
+  storage:
+    ports:
+      - "${MINIO_API_PORT:-9010}:9000"
+      - "${MINIO_CONSOLE_PORT:-9011}:9001"
