@@ -14,21 +14,35 @@ public static class DataSeeder
         var mariEl = new Region { Name = "Марий Эл", Slug = "mari-el" };
         var tatarstan = new Region { Name = "Татарстан", Slug = "tatarstan" };
         var nizhny = new Region { Name = "Нижегородская область", Slug = "nizhegorodskaya-oblast" };
-        db.Regions.AddRange(mariEl, tatarstan, nizhny);
+        var mordovia = new Region { Name = "Республика Мордовия", Slug = "respublika-mordoviya" };
+        var chuvashia = new Region { Name = "Чувашская республика", Slug = "chuvashskaya-respublika" };
+        var altay = new Region { Name = "Алтайский край", Slug = "altayskiy-kray" };
+        var dagestan = new Region { Name = "Дагестан", Slug = "dagestan" };
+        var karelia = new Region { Name = "Карелия", Slug = "kareliya" };
+        db.Regions.AddRange(mariEl, tatarstan, nizhny, mordovia, chuvashia, altay, dagestan, karelia);
         await db.SaveChangesAsync();
 
         // --- Cities/Districts ---
         var yoshkarOla = new CityOrDistrict { RegionId = mariEl.Id, Name = "Йошкар-Ола", Slug = "yoshkar-ola", IsCity = true };
         var zvenigovskiy = new CityOrDistrict { RegionId = mariEl.Id, Name = "Звениговский район", Slug = "zvenigovskii-rayon", IsCity = false };
         var kazan = new CityOrDistrict { RegionId = tatarstan.Id, Name = "Казань", Slug = "kazan", IsCity = true };
-        db.CitiesAndDistricts.AddRange(yoshkarOla, zvenigovskiy, kazan);
+        var nizhnyNovgorod = new CityOrDistrict { RegionId = nizhny.Id, Name = "Нижний Новгород", Slug = "nizhniy-novgorod", IsCity = true };
+        var semyonov = new CityOrDistrict { RegionId = nizhny.Id, Name = "Семёнов", Slug = "semyonov", IsCity = true };
+        var cheboksary = new CityOrDistrict { RegionId = chuvashia.Id, Name = "Чебоксары", Slug = "cheboksary", IsCity = true };
+        var sortavalla = new CityOrDistrict { RegionId = karelia.Id, Name = "Сортовалла", Slug = "sortovalla", IsCity = true };
+        var belokurikha = new CityOrDistrict { RegionId = altay.Id, Name = "Белокуриха", Slug = "belokurikha", IsCity = true };
+        var derbent = new CityOrDistrict { RegionId = dagestan.Id, Name = "Дербент", Slug = "derbent", IsCity = true };
+        db.CitiesAndDistricts.AddRange(yoshkarOla, zvenigovskiy, kazan, nizhnyNovgorod, semyonov, cheboksary, sortavalla, belokurikha, derbent);
         await db.SaveChangesAsync();
 
         // --- Object Types ---
         var glamping = new ObjectType { Name = "Глэмпинг", Slug = "glempingi" };
         var guestHouse = new ObjectType { Name = "Гостевой дом", Slug = "gostevye-doma" };
         var bathhouse = new ObjectType { Name = "Баня", Slug = "bani" };
-        db.ObjectTypes.AddRange(glamping, guestHouse, bathhouse);
+        var cottage = new ObjectType { Name = "Коттедж", Slug = "kottedzhi" };
+        var baseOtdykha = new ObjectType { Name = "База отдыха", Slug = "bazy-otdykha" };
+        var parkHotel = new ObjectType { Name = "Парк-отель", Slug = "park-oteli" };
+        db.ObjectTypes.AddRange(glamping, guestHouse, bathhouse, cottage, baseOtdykha, parkHotel);
         await db.SaveChangesAsync();
 
         // --- Amenities ---
@@ -243,6 +257,68 @@ public static class DataSeeder
         db.ObjectPhotos.AddRange(
             new ObjectPhoto { ObjectId = obj3.Id, Url = "/images/seed/bathhouse-1.jpg", Alt = "Баня Парная у озера — вид снаружи", SortOrder = 1 },
             new ObjectPhoto { ObjectId = obj3.Id, Url = "/images/seed/bathhouse-2.jpg", Alt = "Чан и купель бани Парная у озера", SortOrder = 2 }
+        );
+
+        // === Object 4: Парк-отель «Вудлэнд Кэмп» ===
+        var obj4 = new GlampingObject
+        {
+            OwnerId = owner.Id,
+            ObjectTypeId = parkHotel.Id,
+            RegionId = mariEl.Id,
+            CityOrDistrictId = yoshkarOla.Id,
+            Name = "Парк-отель «Вудлэнд Кэмп»",
+            Slug = "park-otel-vudlend-kemp",
+            ShortDescription = "Парк-отель «Вудлэнд» расположен на живописном берегу озера Шап, в самом сердце Республики Марий Эл — региона, который находится всего в часе лета от Москвы.\nЭто место, где можно по-настоящему отключиться от городской суеты, почувствовать ритм природы и позволить себе отдых, о котором давно мечталось",
+            FullDescription = "Парк-отель «Вудлэнд» расположен на живописном берегу озера Шап, в самом сердце Республики Марий Эл — региона, который находится всего в часе лета от Москвы.\nЭто место, где можно по-настоящему отключиться от городской суеты, почувствовать ритм природы и позволить себе отдых, о котором давно мечталось.\n\nКак добраться\n\nНА АВТОМОБИЛЕ:\nИз Йошкар-Олы - 25 км - 30 минут\nИз Чебоксар - 75 км - 1 час\nИз Казани - 150 км - 2 часа 30 минут\nК озеру ведёт трасса Йошкар-Ола-Чебоксары (автотрасса «Вятка»). В навигаторе — парк-отель «Вудлэнд». Координаты 56.461421 | 47.873517.",
+            Area = 0,
+            Capacity = 4,
+            Beds = 2,
+            Address = "Марий Эл, г. Йошкар-Ола, пос. Шап, озеро Шап, ул. Санаторная, д. 5",
+            Latitude = 56.46085,
+            Longitude = 47.871847,
+            CheckInTime = "14:00",
+            CheckOutTime = "12:00",
+            ChildrenAllowed = true,
+            PetsAllowed = true,
+            SmokingAllowed = false,
+            EventsAllowed = true,
+            Deposit = "",
+            Rules = "Отдельно стоящий стильный дом с собственной террасой. Расположен на первой линии у озера Шап.",
+            Status = ObjectStatus.Published
+        };
+        db.GlampingObjects.Add(obj4);
+        await db.SaveChangesAsync();
+
+        db.ObjectAmenities.AddRange(
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = wifi.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = sauna.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = grill.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = water.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = forest.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = pets.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = children.Id },
+            new ObjectAmenity { ObjectId = obj4.Id, AmenityId = kitchen.Id }
+        );
+
+        db.Tariffs.AddRange(
+            new Tariff { ObjectId = obj4.Id, Name = "Дом с видом на озеро", Price = 19600, Description = "Отдельно стоящий стильный дом вместимостью до 4 человек. Панорамные окна выходят прямо на озеро." },
+            new Tariff { ObjectId = obj4.Id, Name = "Дом с общей террасой", Price = 16500, Description = "Дом, соединенный общей террасой с соседним домом. На первой линии у озера Шап." },
+            new Tariff { ObjectId = obj4.Id, Name = "Геокупол", Price = 12500, Description = "Уникальные эмоции от проживания в геокуполе!" },
+            new Tariff { ObjectId = obj4.Id, Name = "Дом с видом на лес", Price = 14500, Description = "Отдельно стоящий стильный дом вместимостью до 4 человек с собственной террасой." }
+        );
+
+        db.SourceLinks.Add(new SourceLink
+        {
+            ObjectId = obj4.Id,
+            SourceName = "Официальный сайт",
+            SourceUrl = "https://vudlandcamp.ru/",
+            SourceType = "website"
+        });
+
+        db.ObjectPhotos.AddRange(
+            new ObjectPhoto { ObjectId = obj4.Id, Url = "https://vudlandcamp.ru/upload/resize_cache/iblock/757/1346_640_2619711fa078991f0a23d032687646b21/qxuzdgngafgeh3mu6nqj8d96zuqlx6yd.webp", Alt = "Вудленд — вид зимой на домики", SortOrder = 1 },
+            new ObjectPhoto { ObjectId = obj4.Id, Url = "https://vudlandcamp.ru/upload/resize_cache/iblock/312/1152_592_1619711fa078991f0a23d032687646b21/hz1cbmxex29kuzm9djujnyi6jpvd9kpj.webp", Alt = "Шатёр-купол в парк-отеле Вудленд", SortOrder = 2 },
+            new ObjectPhoto { ObjectId = obj4.Id, Url = "https://vudlandcamp.ru/upload/resize_cache/iblock/0bd/1346_640_2619711fa078991f0a23d032687646b21/a5uiyqrg4288l3cnmju0nuheh0ladl6b.webp", Alt = "Вид из номера на озеро", SortOrder = 3 }
         );
 
         // --- Popular queries ---

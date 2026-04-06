@@ -162,11 +162,18 @@ const accommodationTypes: DropdownItem[] = [
   { label: "Бани и сауны", href: "/mari-el/bani/" },
   { label: "Коттеджи", href: "/mari-el/kottedzhi/" },
   { label: "Базы отдыха", href: "/mari-el/bazy-otdykha/" },
+  { label: "Парк-отели", href: "/mari-el/park-oteli/" },
 ];
 
 const destinations: DropdownItem[] = [
   { label: "Марий Эл", href: "/mari-el/" },
   { label: "Татарстан", href: "/tatarstan/" },
+  { label: "Нижегородская область", href: "/nizhegorodskaya-oblast/" },
+  { label: "Чувашия", href: "/chuvashskaya-respublika/" },
+  { label: "Мордовия", href: "/respublika-mordoviya/" },
+  { label: "Карелия", href: "/kareliya/" },
+  { label: "Алтайский край", href: "/altayskiy-kray/" },
+  { label: "Дагестан", href: "/dagestan/" },
 ];
 
 export function HeaderNav() {
