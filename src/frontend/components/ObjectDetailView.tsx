@@ -1,6 +1,7 @@
 import { ObjectDetail } from "@/lib/api";
 import { YandexMap } from "./YandexMap";
 import { SafeImage } from "./SafeImage";
+import { ImageSlider } from "./ImageSlider";
 
 export function ObjectDetailView({ obj }: { obj: ObjectDetail }) {
   const jsonLd = {
@@ -52,21 +53,7 @@ export function ObjectDetailView({ obj }: { obj: ObjectDetail }) {
 
           {/* Photo gallery */}
           {obj.photos && obj.photos.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
-              {obj.photos.map((photo, i) => (
-                <div
-                  key={photo.id}
-                  className={`overflow-hidden rounded-lg ${i === 0 ? "col-span-2 md:col-span-2 row-span-2" : ""}`}
-                >
-                  <SafeImage
-                    src={photo.url}
-                    alt={photo.alt || obj.name}
-                    className={`w-full object-cover ${i === 0 ? "h-64 md:h-80" : "h-36 md:h-48"}`}
-                    loading={i === 0 ? "eager" : "lazy"}
-                  />
-                </div>
-              ))}
-            </div>
+            <ImageSlider photos={obj.photos} objectName={obj.name} />
           ) : (
             <div className="h-72 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-200 rounded-xl flex flex-col items-center justify-center gap-3 mb-6 border border-gray-200">
               <svg className="w-16 h-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>

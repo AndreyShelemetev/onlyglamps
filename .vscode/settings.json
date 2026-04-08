@@ -9,6 +9,11 @@
         "git init": true,
         "git add": true,
         "git commit": true,
-        "git push": true
+        "git push": true,
+        "/^git pull origin main$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "docker compose": true
     }
 }
