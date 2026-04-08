@@ -20,9 +20,9 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero with blurred background */}
-      <section className="relative overflow-hidden hero-fallback">
+      <section className="relative hero-fallback z-10">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center overflow-hidden"
           style={{ backgroundImage: "url('/hero-bg.jpg')" }}
         />
         <div className="absolute inset-0 bg-navy-900/40" />
@@ -41,35 +41,23 @@ export default async function HomePage() {
       <section className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="text-2xl font-bold text-navy-900 mb-6">Типы размещения</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {types.map((type) => {
-            const fallbackIcons: Record<string, string> = {
-              'baza-otdykha': '🏕️', 'bani': '🧖', 'glempingi': '⛺',
-              'gostevye-doma': '🏡', 'arenda-bessedok': '🌲', 'eko-park': '🌿',
-            };
-            const fallbackColors: Record<string, [string, string]> = {
-              'baza-otdykha': ['#10b981', '#047857'], 'bani': ['#f97316', '#dc2626'],
-              'glempingi': ['#38bdf8', '#0e7490'], 'gostevye-doma': ['#fcd34d', '#d97706'],
-              'arenda-bessedok': ['#8b5cf6', '#4338ca'], 'eko-park': ['#a3e635', '#15803d'],
-            };
-            const icon = type.icon || fallbackIcons[type.slug] || '🏠';
-            const [cf, ct] = [
-              type.colorFrom || fallbackColors[type.slug]?.[0] || '#64748b',
-              type.colorTo || fallbackColors[type.slug]?.[1] || '#334155',
-            ];
-            return (
-              <a
-                key={type.slug}
-                href={`/mari-el/${type.slug}/`}
-                className="group relative block rounded-2xl overflow-hidden p-6 h-36 hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-                style={{ background: `linear-gradient(135deg, ${cf}, ${ct})` }}
-              >
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-7xl opacity-80 group-hover:opacity-100 transition drop-shadow-lg">{icon}</span>
-                <div className="relative z-10 flex flex-col justify-end h-full">
-                  <h3 className="text-lg font-bold text-white drop-shadow">{type.name}</h3>
-                </div>
-              </a>
-            );
-          })}
+          {types.map((type) => (
+            <a
+              key={type.slug}
+              href={`/mari-el/${type.slug}/`}
+              className="group relative block rounded-2xl overflow-hidden h-44 md:h-52 hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
+            >
+              <img
+                src={`/types/${type.slug}.jpg`}
+                alt={type.name}
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="relative z-10 flex flex-col justify-end h-full p-5">
+                <h3 className="text-lg font-bold text-white drop-shadow-md">{type.name}</h3>
+              </div>
+            </a>
+          ))}
         </div>
       </section>
 

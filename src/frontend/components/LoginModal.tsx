@@ -181,24 +181,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   {submitting ? "Вход..." : "Войти"}
                 </button>
               </div>
-
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 font-medium mb-2">Тестовые аккаунты:</p>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Арендатор:</span>
-                    <code className="text-gray-800">user@onlyglamps.ru / user123</code>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Арендодатель:</span>
-                    <code className="text-gray-800">owner@onlyglamps.ru / owner123</code>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Админ:</span>
-                    <code className="text-gray-800">admin@onlyglamps.ru / admin123</code>
-                  </div>
-                </div>
-              </div>
             </form>
           )}
 

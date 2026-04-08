@@ -16,6 +16,29 @@ public class ObjectsController : ControllerBase
         _db = db;
     }
 
+    [HttpGet("map-points")]
+    public async Task<IActionResult> GetMapPoints()
+    {
+        var points = await _db.GlampingObjects
+            .Where(o => o.Status == ObjectStatus.Published && o.Latitude != null && o.Longitude != null)
+            .Select(o => new
+            {
+                o.Id,
+                o.Name,
+                o.Slug,
+                o.Latitude,
+                o.Longitude,
+                ObjectType = new { o.ObjectType.Name, o.ObjectType.Slug },
+                Region = new { o.Region.Name, o.Region.Slug },
+                CityOrDistrict = new { o.CityOrDistrict.Name, o.CityOrDistrict.Slug },
+                MinPrice = o.Tariffs.Any() ? o.Tariffs.Min(t => t.Price) : (decimal?)null,
+                MainPhotoUrl = o.Photos.OrderBy(p => p.SortOrder).Select(p => p.Url).FirstOrDefault(),
+            })
+            .ToListAsync();
+
+        return Ok(points);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? region = null,

@@ -122,3 +122,26 @@ export async function fetchPopularQueries(): Promise<PopularQueryItem[]> {
     return [];
   }
 }
+
+export interface MapPoint {
+  id: number;
+  name: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
+  objectType: { name: string; slug: string };
+  region: { name: string; slug: string };
+  cityOrDistrict: { name: string; slug: string };
+  minPrice: number | null;
+  mainPhotoUrl: string | null;
+}
+
+export async function fetchMapPoints(): Promise<MapPoint[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/objects/map-points`, { cache: "no-store" });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}

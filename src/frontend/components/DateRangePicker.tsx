@@ -126,7 +126,7 @@ export function DateRangePicker({ onRangeChange }: DateRangePickerProps) {
           onClick={() => handleDayClick(date)}
           onMouseEnter={() => startDate && !endDate && setHoverDate(date)}
           className={`
-            w-9 h-9 text-sm rounded-full flex items-center justify-center transition-colors
+            w-9 h-9 min-w-[2.25rem] text-sm rounded-full flex items-center justify-center transition-colors
             ${isPast ? "text-gray-400 cursor-default" : "hover:bg-primary-100 cursor-pointer text-gray-800"}
             ${inRange && !start && !end ? "bg-primary-100 text-primary-900 font-medium" : ""}
             ${start || end ? "bg-primary-600 text-white font-semibold" : ""}
@@ -156,7 +156,7 @@ export function DateRangePicker({ onRangeChange }: DateRangePickerProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 z-50 p-4 w-max">
+        <div className="absolute top-full right-0 md:left-0 md:right-auto mt-1 bg-white rounded-xl shadow-xl border border-gray-200 z-50 p-4 w-max max-w-[calc(100vw-2rem)] overflow-x-auto">
           <div className="flex gap-6">
             {/* Month 1 */}
             <div>
@@ -177,7 +177,7 @@ export function DateRangePicker({ onRangeChange }: DateRangePickerProps) {
               </div>
               <div className="grid grid-cols-7 gap-0.5 mb-1">
                 {WEEKDAYS_RU.map((wd) => (
-                  <div key={wd} className="w-9 h-7 text-[11px] text-gray-400 flex items-center justify-center font-medium">
+                  <div key={wd} className="w-9 min-w-[2.25rem] h-7 text-[11px] text-gray-400 flex items-center justify-center font-medium">
                     {wd}
                   </div>
                 ))}
@@ -206,7 +206,7 @@ export function DateRangePicker({ onRangeChange }: DateRangePickerProps) {
               </div>
               <div className="grid grid-cols-7 gap-0.5 mb-1">
                 {WEEKDAYS_RU.map((wd) => (
-                  <div key={wd} className="w-9 h-7 text-[11px] text-gray-400 flex items-center justify-center font-medium">
+                  <div key={wd} className="w-9 min-w-[2.25rem] h-7 text-[11px] text-gray-400 flex items-center justify-center font-medium">
                     {wd}
                   </div>
                 ))}

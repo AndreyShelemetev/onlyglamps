@@ -17,6 +17,7 @@ out/
 .env.local
 .env.*.local
 .env.production
+CREDENTIALS.md
 
 # IDEs
 .idea/
