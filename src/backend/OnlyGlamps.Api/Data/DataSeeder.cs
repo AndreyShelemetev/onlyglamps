@@ -418,7 +418,11 @@ public static class DataSeeder
             Email = "author@onlyglamps.ru",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("author123"),
             Role = UserRole.Author,
-            AuthDate = DateTime.UtcNow
+            AuthDate = DateTime.UtcNow,
+            Bio = "Пишу об отдыхе на природе: глэмпингах, гостевых домах, банях и базах отдыха. Отдыхай на природе с комфортом!",
+            AvatarUrl = "/images/author-avatar.jpg",
+            VkUrl = "https://vk.com/onlyglamps",
+            TelegramUrl = "https://t.me/onlyglamps"
         };
         db.Users.Add(author);
         await db.SaveChangesAsync();
