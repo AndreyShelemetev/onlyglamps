@@ -11,6 +11,61 @@ const roleLabels: Record<string, string> = {
   Author: "Автор",
 };
 
+interface MenuItem {
+  href: string;
+  icon: string;
+  label: string;
+}
+
+const ownerMenuItems: MenuItem[] = [
+  { href: "/dashboard/objects/", icon: "🏠", label: "Мои объекты" },
+  { href: "/dashboard/objects/new/", icon: "➕", label: "Создать объект" },
+  { href: "/dashboard/profile/", icon: "👤", label: "Профиль" },
+];
+
+const authorMenuItems: MenuItem[] = [
+  { href: "/dashboard/admin/blog/", icon: "📝", label: "Мои статьи" },
+  { href: "/dashboard/admin/blog/new/", icon: "➕", label: "Создать статью" },
+  { href: "/dashboard/author-profile/", icon: "👤", label: "Профиль" },
+];
+
+const adminMenuItems: MenuItem[] = [
+  { href: "/dashboard/admin/objects/", icon: "📋", label: "Все объекты" },
+  { href: "/dashboard/admin/regions/", icon: "🗺️", label: "Регионы и города" },
+  { href: "/dashboard/admin/types/", icon: "🏷️", label: "Типы объектов" },
+  { href: "/dashboard/admin/catalog/", icon: "🧩", label: "Теги и удобства" },
+  { href: "/dashboard/admin/seo/", icon: "🔍", label: "SEO" },
+  { href: "/dashboard/admin/blog/", icon: "📝", label: "Путеводитель" },
+];
+
+function getMenuSections(role: string): { items: MenuItem[]; title?: string }[] {
+  switch (role) {
+    case "Admin":
+      return [
+        { items: ownerMenuItems },
+        { title: "Админка", items: adminMenuItems },
+      ];
+    case "Author":
+      return [{ items: authorMenuItems }];
+    case "Owner":
+      return [{ items: ownerMenuItems }];
+    default:
+      return [];
+  }
+}
+
+function MenuLink({ item, onClick }: { item: MenuItem; onClick: () => void }) {
+  return (
+    <a
+      href={item.href}
+      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+      onClick={onClick}
+    >
+      <span>{item.icon}</span> {item.label}
+    </a>
+  );
+}
+
 export function HeaderAuth() {
   const { user, loading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
@@ -30,6 +85,9 @@ export function HeaderAuth() {
   if (loading) {
     return <div className="w-20 h-8 bg-gray-100 rounded animate-pulse" />;
   }
+
+  const closeMenu = () => setMenuOpen(false);
+  const sections = user ? getMenuSections(user.role) : [];
 
   return (
     <>
@@ -57,107 +115,22 @@ export function HeaderAuth() {
 
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-50 py-1 animate-in fade-in slide-in-from-top-1">
-              {(user.role === "Owner" || user.role === "Admin") && (
-                <>
-                  <a
-                    href="/dashboard/objects/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>🏠</span> Мои объекты
-                  </a>
-                  <a
-                    href="/dashboard/objects/new/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>➕</span> Создать объект
-                  </a>
-                  <a
-                    href="/dashboard/profile/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>👤</span> Профиль
-                  </a>
-                </>
-              )}
-              {user.role === "Author" && (
-                <>
-                  <a
-                    href="/dashboard/admin/blog/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>📝</span> Мои статьи
-                  </a>
-                  <a
-                    href="/dashboard/admin/blog/new/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>➕</span> Создать статью
-                  </a>
-                  <a
-                    href="/dashboard/author-profile/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>👤</span> Профиль
-                  </a>
-                </>
-              )}
-              {user.role === "Admin" && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
-                  <div className="px-4 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">Админка</div>
-                  <a
-                    href="/dashboard/admin/objects/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>📋</span> Все объекты
-                  </a>
-                  <a
-                    href="/dashboard/admin/regions/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>🗺️</span> Регионы и города
-                  </a>
-                  <a
-                    href="/dashboard/admin/types/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>🏷️</span> Типы объектов
-                  </a>
-                  <a
-                    href="/dashboard/admin/catalog/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>🧩</span> Теги и удобства
-                  </a>
-                  <a
-                    href="/dashboard/admin/seo/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>🔍</span> SEO
-                  </a>
-                  <a
-                    href="/dashboard/admin/blog/"
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <span>📝</span> Путеводитель
-                  </a>
-                </>
-              )}
+              {sections.map((section, si) => (
+                <div key={si}>
+                  {si > 0 && <div className="border-t border-gray-100 my-1" />}
+                  {section.title && (
+                    <div className="px-4 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      {section.title}
+                    </div>
+                  )}
+                  {section.items.map((item) => (
+                    <MenuLink key={item.href + item.label} item={item} onClick={closeMenu} />
+                  ))}
+                </div>
+              ))}
               <div className="border-t border-gray-100 my-1" />
               <button
-                onClick={() => { logout(); setMenuOpen(false); }}
+                onClick={() => { logout(); closeMenu(); }}
                 className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
               >
                 <span>🚪</span> Выйти

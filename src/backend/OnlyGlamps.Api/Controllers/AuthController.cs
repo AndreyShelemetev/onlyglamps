@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlyGlamps.Api.Data;
+using OnlyGlamps.Api.Models.Dto;
 using OnlyGlamps.Api.Models.Entities;
 using OnlyGlamps.Api.Services;
 
@@ -26,7 +27,9 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
             return BadRequest(new { error = "Email и пароль обязательны" });
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email.Trim().ToLower());
+        var user = await _db.Users
+            .Include(u => u.OwnerProfile)
+            .FirstOrDefaultAsync(u => u.Email == request.Email.Trim().ToLower());
         if (user == null || string.IsNullOrEmpty(user.PasswordHash))
             return Unauthorized(new { error = "Неверный email или пароль" });
 
@@ -38,7 +41,7 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync();
 
         var token = _auth.GenerateJwt(user);
-        return Ok(new { token, user = MapUser(user) });
+        return Ok(new { token, user = UserDto.FromEntity(user) });
     }
 
     [HttpPost("telegram")]
@@ -47,7 +50,9 @@ public class AuthController : ControllerBase
         if (!_auth.VerifyTelegramHash(request))
             return Unauthorized(new { error = "Недействительные данные Telegram" });
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.TelegramId == request.Id);
+        var user = await _db.Users
+            .Include(u => u.OwnerProfile)
+            .FirstOrDefaultAsync(u => u.TelegramId == request.Id);
         if (user == null)
         {
             user = new User
@@ -74,7 +79,7 @@ public class AuthController : ControllerBase
         }
 
         var token = _auth.GenerateJwt(user);
-        return Ok(new { token, user = MapUser(user) });
+        return Ok(new { token, user = UserDto.FromEntity(user) });
     }
 
     [Authorize]
@@ -89,27 +94,6 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.Id == userId.Value);
         if (user == null) return Unauthorized();
 
-        return Ok(MapUser(user));
+        return Ok(UserDto.FromEntity(user));
     }
-
-    private static object MapUser(User user) => new
-    {
-        user.Id,
-        user.Username,
-        user.FirstName,
-        user.LastName,
-        user.AvatarUrl,
-        user.Email,
-        Role = user.Role.ToString(),
-        HasOwnerProfile = user.OwnerProfile != null,
-        user.Bio,
-        user.VkUrl,
-        user.TelegramUrl
-    };
-}
-
-public class LoginRequest
-{
-    public string Email { get; set; } = "";
-    public string Password { get; set; } = "";
 }

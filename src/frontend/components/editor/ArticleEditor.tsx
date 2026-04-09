@@ -4,6 +4,18 @@ import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { blogUploadImage } from "@/lib/dashboard-api";
 
+interface ArticleFormData {
+  title: string;
+  h1: string;
+  description: string;
+  slug: string;
+  coverImageUrl: string | null;
+  content: string;
+  views: number;
+  readTimeMinutes: number;
+  status: string;
+}
+
 interface ArticleEditorProps {
   initialData?: {
     title: string;
@@ -16,7 +28,7 @@ interface ArticleEditorProps {
     readTimeMinutes: number;
     status: string;
   };
-  onSave: (data: any) => Promise<void>;
+  onSave: (data: ArticleFormData) => Promise<void>;
   saving: boolean;
 }
 
@@ -45,8 +57,8 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   const [slug, setSlug] = useState(initialData?.slug || "");
   const [coverImageUrl, setCoverImageUrl] = useState(initialData?.coverImageUrl || "");
   const [content, setContent] = useState(initialData?.content || "");
-  const [views, setViews] = useState(initialData?.views ?? Math.floor(Math.random() * 200) + 100);
-  const [readTime, setReadTime] = useState(initialData?.readTimeMinutes ?? Math.floor(Math.random() * 10) + 3);
+  const [views, setViews] = useState(initialData?.views ?? 0);
+  const [readTime, setReadTime] = useState(initialData?.readTimeMinutes ?? 5);
   const [status, setStatus] = useState(initialData?.status || "Draft");
   const [showPreview, setShowPreview] = useState(false);
   const [uploading, setUploading] = useState(false);

@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using OnlyGlamps.Api.Models.Dto;
 using OnlyGlamps.Api.Models.Entities;
 
 namespace OnlyGlamps.Api.Services;
@@ -73,15 +74,4 @@ public class AuthService
             return id;
         return null;
     }
-}
-
-public class TelegramLoginData
-{
-    public long Id { get; set; }
-    public string? Username { get; set; }
-    public string FirstName { get; set; } = "";
-    public string? LastName { get; set; }
-    public string? PhotoUrl { get; set; }
-    public long AuthDate { get; set; }
-    public string Hash { get; set; } = "";
 }

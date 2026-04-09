@@ -296,6 +296,18 @@ export async function fetchCatalogTags() {
 
 // === Blog Admin API ===
 
+export interface BlogArticlePayload {
+  title: string;
+  h1: string;
+  description: string;
+  slug: string;
+  coverImageUrl: string | null;
+  content: string;
+  views: number;
+  readTimeMinutes: number;
+  status: string;
+}
+
 export async function blogAdminList(token: string) {
   const res = await authFetch("/blog/admin/list", token);
   return safeJson(res);
@@ -306,12 +318,12 @@ export async function blogAdminGet(token: string, id: number) {
   return safeJson(res);
 }
 
-export async function blogAdminCreate(token: string, data: any) {
+export async function blogAdminCreate(token: string, data: BlogArticlePayload) {
   const res = await authFetch("/blog/admin", token, { method: "POST", body: JSON.stringify(data) });
   return safeJson(res);
 }
 
-export async function blogAdminUpdate(token: string, id: number, data: any) {
+export async function blogAdminUpdate(token: string, id: number, data: BlogArticlePayload) {
   const res = await authFetch(`/blog/admin/${id}`, token, { method: "PUT", body: JSON.stringify(data) });
   return safeJson(res);
 }

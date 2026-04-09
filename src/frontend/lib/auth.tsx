@@ -11,6 +11,9 @@ interface AuthUser {
   email: string | null;
   role: string;
   hasOwnerProfile: boolean;
+  bio: string | null;
+  vkUrl: string | null;
+  telegramUrl: string | null;
 }
 
 interface AuthContextType {

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlyGlamps.Api.Data;
+using OnlyGlamps.Api.Models.Dto;
 using OnlyGlamps.Api.Models.Entities;
 using OnlyGlamps.Api.Services;
 
@@ -14,6 +15,9 @@ public class BlogController : ControllerBase
     private readonly AppDbContext _db;
     private readonly StorageService _storage;
     private readonly AuthService _auth;
+
+    private static readonly string[] AllowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+    private static readonly string[] AllowedAvatarExtensions = [".jpg", ".jpeg", ".png", ".webp"];
 
     public BlogController(AppDbContext db, StorageService storage, AuthService auth)
     {
@@ -37,18 +41,18 @@ public class BlogController : ControllerBase
         var articles = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(a => new
+            .Select(a => new ArticleListItemDto
             {
-                a.Id,
-                a.Title,
-                a.H1,
-                a.Description,
-                a.Slug,
-                a.CoverImageUrl,
-                a.Views,
-                a.ReadTimeMinutes,
-                a.CreatedAt,
-                Author = new { a.Author.FirstName, a.Author.LastName }
+                Id = a.Id,
+                Title = a.Title,
+                H1 = a.H1,
+                Description = a.Description,
+                Slug = a.Slug,
+                CoverImageUrl = a.CoverImageUrl,
+                Views = a.Views,
+                ReadTimeMinutes = a.ReadTimeMinutes,
+                CreatedAt = a.CreatedAt,
+                Author = new AuthorShortDto { FirstName = a.Author.FirstName, LastName = a.Author.LastName }
             })
             .ToListAsync();
 
@@ -65,31 +69,30 @@ public class BlogController : ControllerBase
 
         if (article == null) return NotFound();
 
-        // Increment views
         article.Views++;
         await _db.SaveChangesAsync();
 
-        return Ok(new
+        return Ok(new ArticleDetailDto
         {
-            article.Id,
-            article.Title,
-            article.H1,
-            article.Description,
-            article.Slug,
-            article.CoverImageUrl,
-            article.Content,
-            article.Views,
-            article.ReadTimeMinutes,
-            article.CreatedAt,
-            article.UpdatedAt,
-            Author = new
+            Id = article.Id,
+            Title = article.Title,
+            H1 = article.H1,
+            Description = article.Description,
+            Slug = article.Slug,
+            CoverImageUrl = article.CoverImageUrl,
+            Content = article.Content,
+            Views = article.Views,
+            ReadTimeMinutes = article.ReadTimeMinutes,
+            CreatedAt = article.CreatedAt,
+            UpdatedAt = article.UpdatedAt,
+            Author = new AuthorDetailDto
             {
-                article.Author.FirstName,
-                article.Author.LastName,
-                article.Author.AvatarUrl,
-                article.Author.Bio,
-                article.Author.VkUrl,
-                article.Author.TelegramUrl
+                FirstName = article.Author.FirstName,
+                LastName = article.Author.LastName,
+                AvatarUrl = article.Author.AvatarUrl,
+                Bio = article.Author.Bio,
+                VkUrl = article.Author.VkUrl,
+                TelegramUrl = article.Author.TelegramUrl
             }
         });
     }
@@ -100,18 +103,27 @@ public class BlogController : ControllerBase
     [Authorize(Roles = "Admin,Author")]
     public async Task<IActionResult> AdminList()
     {
-        var articles = await _db.Articles
+        var userId = _auth.GetUserIdFromContext(HttpContext);
+        var user = userId.HasValue ? await _db.Users.FindAsync(userId.Value) : null;
+
+        var query = _db.Articles.AsQueryable();
+
+        // Authors can only see their own articles
+        if (user?.Role == UserRole.Author)
+            query = query.Where(a => a.AuthorId == userId!.Value);
+
+        var articles = await query
             .OrderByDescending(a => a.CreatedAt)
-            .Select(a => new
+            .Select(a => new ArticleAdminListItemDto
             {
-                a.Id,
-                a.Title,
-                a.Slug,
+                Id = a.Id,
+                Title = a.Title,
+                Slug = a.Slug,
                 Status = a.Status.ToString(),
-                a.Views,
-                a.ReadTimeMinutes,
-                a.CreatedAt,
-                Author = new { a.Author.FirstName, a.Author.LastName }
+                Views = a.Views,
+                ReadTimeMinutes = a.ReadTimeMinutes,
+                CreatedAt = a.CreatedAt,
+                Author = new AuthorShortDto { FirstName = a.Author.FirstName, LastName = a.Author.LastName }
             })
             .ToListAsync();
 
@@ -128,43 +140,34 @@ public class BlogController : ControllerBase
 
         if (article == null) return NotFound();
 
-        return Ok(new
+        return Ok(new ArticleAdminDetailDto
         {
-            article.Id,
-            article.Title,
-            article.H1,
-            article.Description,
-            article.Slug,
-            article.CoverImageUrl,
-            article.Content,
-            article.Views,
-            article.ReadTimeMinutes,
+            Id = article.Id,
+            Title = article.Title,
+            H1 = article.H1,
+            Description = article.Description,
+            Slug = article.Slug,
+            CoverImageUrl = article.CoverImageUrl,
+            Content = article.Content,
+            Views = article.Views,
+            ReadTimeMinutes = article.ReadTimeMinutes,
             Status = article.Status.ToString(),
-            article.CreatedAt,
-            article.UpdatedAt,
-            article.AuthorId,
-            Author = new { article.Author.FirstName, article.Author.LastName }
+            CreatedAt = article.CreatedAt,
+            UpdatedAt = article.UpdatedAt,
+            AuthorId = article.AuthorId,
+            Author = new AuthorShortDto { FirstName = article.Author.FirstName, LastName = article.Author.LastName }
         });
     }
 
-    public record ArticleDto(
-        string Title,
-        string H1,
-        string Description,
-        string Slug,
-        string? CoverImageUrl,
-        string? Content,
-        int Views,
-        int ReadTimeMinutes,
-        string Status
-    );
-
     [HttpPost("admin")]
     [Authorize(Roles = "Admin,Author")]
-    public async Task<IActionResult> Create([FromBody] ArticleDto dto)
+    public async Task<IActionResult> Create([FromBody] ArticleCreateDto dto)
     {
         var userId = _auth.GetUserIdFromContext(HttpContext);
         if (userId == null) return Unauthorized();
+
+        if (!Enum.TryParse<ArticleStatus>(dto.Status, out var status))
+            return BadRequest(new { error = "Недопустимый статус" });
 
         if (await _db.Articles.AnyAsync(a => a.Slug == dto.Slug))
             return BadRequest(new { error = "Статья с таким slug уже существует" });
@@ -179,7 +182,7 @@ public class BlogController : ControllerBase
             Content = dto.Content ?? "",
             Views = dto.Views,
             ReadTimeMinutes = dto.ReadTimeMinutes,
-            Status = Enum.Parse<ArticleStatus>(dto.Status),
+            Status = status,
             AuthorId = userId.Value
         };
 
@@ -191,8 +194,11 @@ public class BlogController : ControllerBase
 
     [HttpPut("admin/{id:int}")]
     [Authorize(Roles = "Admin,Author")]
-    public async Task<IActionResult> Update(int id, [FromBody] ArticleDto dto)
+    public async Task<IActionResult> Update(int id, [FromBody] ArticleCreateDto dto)
     {
+        if (!Enum.TryParse<ArticleStatus>(dto.Status, out var status))
+            return BadRequest(new { error = "Недопустимый статус" });
+
         var article = await _db.Articles.FindAsync(id);
         if (article == null) return NotFound();
 
@@ -204,7 +210,7 @@ public class BlogController : ControllerBase
         article.Content = dto.Content ?? "";
         article.Views = dto.Views;
         article.ReadTimeMinutes = dto.ReadTimeMinutes;
-        article.Status = Enum.Parse<ArticleStatus>(dto.Status);
+        article.Status = status;
         article.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -229,12 +235,11 @@ public class BlogController : ControllerBase
     public async Task<IActionResult> UploadImage(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("Файл не выбран");
+            return BadRequest(new { error = "Файл не выбран" });
 
-        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowed.Contains(ext))
-            return BadRequest("Разрешены только изображения: jpg, png, webp, gif");
+        if (!AllowedImageExtensions.Contains(ext))
+            return BadRequest(new { error = "Разрешены только изображения: jpg, png, webp, gif" });
 
         using var stream = file.OpenReadStream();
         var url = await _storage.UploadFileAsync(stream, file.FileName, file.ContentType, "blog");
@@ -242,14 +247,6 @@ public class BlogController : ControllerBase
     }
 
     // ── Author profile ──
-
-    public record AuthorProfileDto(
-        string FirstName,
-        string? LastName,
-        string? Bio,
-        string? VkUrl,
-        string? TelegramUrl
-    );
 
     [HttpGet("author/profile")]
     [Authorize(Roles = "Admin,Author")]
@@ -260,20 +257,20 @@ public class BlogController : ControllerBase
         var user = await _db.Users.FindAsync(userId.Value);
         if (user == null) return NotFound();
 
-        return Ok(new
+        return Ok(new AuthorDetailDto
         {
-            user.FirstName,
-            user.LastName,
-            user.AvatarUrl,
-            user.Bio,
-            user.VkUrl,
-            user.TelegramUrl
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            AvatarUrl = user.AvatarUrl,
+            Bio = user.Bio,
+            VkUrl = user.VkUrl,
+            TelegramUrl = user.TelegramUrl
         });
     }
 
     [HttpPut("author/profile")]
     [Authorize(Roles = "Admin,Author")]
-    public async Task<IActionResult> UpdateAuthorProfile([FromBody] AuthorProfileDto dto)
+    public async Task<IActionResult> UpdateAuthorProfile([FromBody] AuthorProfileUpdateDto dto)
     {
         var userId = _auth.GetUserIdFromContext(HttpContext);
         if (userId == null) return Unauthorized();
@@ -297,12 +294,11 @@ public class BlogController : ControllerBase
     public async Task<IActionResult> UploadAvatar(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("Файл не выбран");
+            return BadRequest(new { error = "Файл не выбран" });
 
-        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!allowed.Contains(ext))
-            return BadRequest("Разрешены только: jpg, png, webp");
+        if (!AllowedAvatarExtensions.Contains(ext))
+            return BadRequest(new { error = "Разрешены только: jpg, png, webp" });
 
         var userId = _auth.GetUserIdFromContext(HttpContext);
         if (userId == null) return Unauthorized();
