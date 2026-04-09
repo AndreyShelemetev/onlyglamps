@@ -122,6 +122,8 @@ public class ObjectsController : ControllerBase
             "price_desc" => query.OrderByDescending(o => o.Tariffs.Min(t => t.Price)),
             "rating" => query.OrderByDescending(o =>
                 o.Reviews.Where(r => r.Status == ReviewStatus.Published).Average(r => (double?)r.Rating) ?? 0),
+            "reviews" => query.OrderByDescending(o =>
+                o.Reviews.Count(r => r.Status == ReviewStatus.Published)),
             "newest" => query.OrderByDescending(o => o.CreatedAt),
             "capacity" => query.OrderByDescending(o => o.Capacity),
             _ => query.OrderByDescending(o => o.CreatedAt),

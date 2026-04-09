@@ -68,7 +68,7 @@ public static class DataSeeder
             Username = "admin",
             FirstName = "Админ",
             Email = "admin@onlyglamps.ru",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Adm!n@Gl4mps#2026xQ"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Glamps2026Admin!"),
             Role = UserRole.Admin,
             AuthDate = DateTime.UtcNow
         };
@@ -83,7 +83,7 @@ public static class DataSeeder
             FirstName = "Тестовый",
             LastName = "Владелец",
             Email = "owner@onlyglamps.ru",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Own3r@Gl4mps#2026zR"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("owner123"),
             Role = UserRole.Owner,
             AuthDate = DateTime.UtcNow
         };
@@ -377,7 +377,7 @@ public static class DataSeeder
             Username = "testguest",
             FirstName = "Гость",
             Email = "user@onlyglamps.ru",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Us3r@Gl4mps#2026wK"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("user123"),
             Role = UserRole.User,
             AuthDate = DateTime.UtcNow
         };

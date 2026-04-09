@@ -69,12 +69,25 @@ export function ListingMap({ points }: { points: MapPoint[] }) {
         ? `${Math.round(point.minPrice).toLocaleString("ru-RU")} ₽`
         : "";
 
+      const url = `/${point.region.slug}/${point.cityOrDistrict.slug}/${point.slug}-${point.id}/`;
+
+      const photoHtml = point.mainPhotoUrl
+        ? `<img src="${point.mainPhotoUrl}" alt="${point.name}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />`
+        : "";
+
+      const priceHtml = point.minPrice
+        ? `<div style="font-weight:600;color:#5a9600;margin-top:4px;">от ${priceText}</div>`
+        : "";
+
       const balloonContent = `
         <div style="min-width:200px;max-width:260px;">
-          ${point.mainPhotoUrl ? `<img src="${point.mainPhotoUrl}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;" alt="${point.name}" />` : ""}
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${point.name}</div>
-          <div style="font-size:12px;color:#64748b;margin-bottom:4px;">${point.objectType.name} · ${point.cityOrDistrict.name}</div>
-          ${priceText ? `<div style="font-weight:700;font-size:14px;color:#2a4600;">от ${priceText}</div>` : ""}
+          ${photoHtml}
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">
+            <a href="${url}" style="color:#1e293b;text-decoration:none;">${point.name}</a>
+          </div>
+          <div style="font-size:12px;color:#64748b;">${point.objectType.name} · ${point.cityOrDistrict.name}</div>
+          ${priceHtml}
+          <a href="${url}" style="display:inline-block;margin-top:8px;padding:6px 16px;background:#5a9600;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Подробнее</a>
         </div>
       `;
 

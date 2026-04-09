@@ -4,6 +4,8 @@ import { fetchObjects, fetchRegions, fetchObjectTypes, fetchPopularQueries, fetc
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ObjectCardWide } from "@/components/ObjectCardWide";
 import { ListingMap } from "@/components/ListingMap";
+import { FilterBar } from "@/components/FilterBar";
+import { Suspense } from "react";
 
 interface Props {
   params: { region: string };
@@ -20,15 +22,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Подборка глэмпингов, гостевых домов и бань в регионе ${region.name}: цены, фото, карта, свободные даты. Выберите вариант для отдыха.`,
     alternates: { canonical: `/${region.slug}/` },
   };
-}
-
-function pluralize(n: number, one: string, few: string, many: string): string {
-  const abs = Math.abs(n) % 100;
-  const lastDigit = abs % 10;
-  if (abs > 10 && abs < 20) return many;
-  if (lastDigit > 1 && lastDigit < 5) return few;
-  if (lastDigit === 1) return one;
-  return many;
 }
 
 export default async function RegionPage({ params, searchParams }: Props) {
@@ -69,66 +62,22 @@ export default async function RegionPage({ params, searchParams }: Props) {
         Глэмпинги, гостевые дома и бани для аренды посуточно
       </p>
 
-      {/* Filter bar: types */}
-      {types.length > 0 && (
-        <div className="mb-3">
-          <div className="flex flex-wrap gap-2">
-            {types.map((t) => (
-              <a
-                key={t.id}
-                href={`/${region.slug}/${t.slug}/`}
-                className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-primary-50 hover:text-primary-700 rounded-full transition border border-gray-200 font-medium"
-              >
-                {t.name}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      <Suspense fallback={null}>
+        <FilterBar
+          types={types}
+          cities={region.cities}
+          popularQueries={popularQueries}
+          basePath={basePath}
+          regionSlug={region.slug}
+          total={total}
+          prices={mapPoints.map((p) => p.minPrice).filter((p): p is number => p !== null)}
+        />
+      </Suspense>
 
-      {/* Filter bar: cities */}
-      {region.cities.length > 0 && (
-        <div className="mb-3">
-          <div className="flex flex-wrap gap-2">
-            {region.cities.map((c) => (
-              <a
-                key={c.id}
-                href={`/${region.slug}/${c.slug}/`}
-                className="text-sm px-3 py-1.5 bg-white hover:bg-primary-50 hover:text-primary-700 rounded-full transition border border-gray-200"
-              >
-                {c.name}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Popular queries */}
-      {popularQueries.length > 0 && (
-        <div className="mb-5 flex flex-wrap gap-2">
-          {popularQueries.map((q) => (
-            <a
-              key={q.id}
-              href={`${basePath}?${q.filterParam}`}
-              className="text-xs px-3 py-1 bg-primary-50 text-primary-700 rounded-full border border-primary-200 hover:bg-primary-100 transition"
-            >
-              {q.text}
-            </a>
-          ))}
-        </div>
-      )}
-
-      {/* Count */}
-      <p className="text-sm text-gray-500 mb-4">
-        {total > 0
-          ? `Найдено: ${total} ${pluralize(total, "объект", "объекта", "объектов")}`
-          : "Объекты не найдены"}
-      </p>
-
-      {/* Main layout: cards (2/3) + map (1/3) */}
+      {/* Main layout: cards (50%) + map (50%) */}
       <div className="flex gap-6">
         {/* Cards */}
-        <div className="flex-1 min-w-0">
+        <div className="w-full lg:w-1/2 min-w-0">
           {objects.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p className="text-lg">Объекты не найдены</p>
@@ -144,7 +93,7 @@ export default async function RegionPage({ params, searchParams }: Props) {
         </div>
 
         {/* Map */}
-        <div className="hidden lg:block w-[420px] shrink-0">
+        <div className="hidden lg:block w-1/2 shrink-0">
           <div className="sticky top-20 h-[calc(100vh-6rem)] rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
             <ListingMap points={mapPoints} />
           </div>
