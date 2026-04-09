@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {isAdmin && (
               <div className="text-xs font-semibold text-gray-400 uppercase px-3 pt-2 pb-1">Владелец</div>
             )}
-            {ownerLinks.map((link) => (
+            {isAdmin && ownerLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -116,6 +116,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ))}
               </>
             )}
+            {isAuthor && authorLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
+                  pathname === link.href || pathname.startsWith(link.href.replace(/\/$/, "") + "/")
+                    ? "bg-primary-50 text-primary-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                <span>{link.icon}</span>
+                {link.label}
+              </a>
+            ))}
+            {!isAdmin && !isAuthor && ownerLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
+                  pathname === link.href || pathname.startsWith(link.href.replace(/\/$/, "") + "/")
+                    ? "bg-primary-50 text-primary-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                <span>{link.icon}</span>
+                {link.label}
+              </a>
+            ))}
           </nav>
         </aside>
 
