@@ -35,6 +35,23 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
+      <head>
+        <script
+          type="text/javascript"
+          dangerouslySetInnerHTML={{
+            __html: `(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=108462812','ym');ym(108462812,'init',{ssr:true,webvisor:true,clickmap:true,ecommerce:"dataLayer",referrer:document.referrer,url:location.href,accurateTrackBounce:true,trackLinks:true});`,
+          }}
+        />
+        <noscript>
+          <div>
+            <img
+              src="https://mc.yandex.ru/watch/108462812"
+              style={{ position: "absolute", left: "-9999px" }}
+              alt=""
+            />
+          </div>
+        </noscript>
+      </head>
       <body className="min-h-screen flex flex-col">
         <AuthProvider>
         <header className="bg-white/95 backdrop-blur-md border-b border-navy-200 sticky top-0 z-50">

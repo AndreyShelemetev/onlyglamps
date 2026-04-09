@@ -1,9 +1,9 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { fetchObjects, fetchRegions, fetchObjectTypes, fetchPopularQueries, fetchObjectBySlug } from "@/lib/api";
+import { fetchObjects, fetchRegions, fetchObjectTypes, fetchPopularQueries, fetchObjectBySlug, fetchMapPoints } from "@/lib/api";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { ObjectGrid } from "@/components/ObjectGrid";
-import { PopularQueries } from "@/components/PopularQueries";
+import { ObjectCardWide } from "@/components/ObjectCardWide";
+import { ListingMap } from "@/components/ListingMap";
 import { ObjectDetailView } from "@/components/ObjectDetailView";
 
 interface Props {
@@ -91,10 +91,11 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   const parsed = parsePath(params.region, params.slug);
   if (!parsed) notFound();
 
-  const [regions, types, popularQueries] = await Promise.all([
+  const [regions, types, popularQueries, allMapPoints] = await Promise.all([
     fetchRegions(),
     fetchObjectTypes(),
     fetchPopularQueries(),
+    fetchMapPoints(),
   ]);
 
   const region = regions.find((r) => r.slug === params.region);
@@ -151,6 +152,14 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
 
   const { data: objects, total } = await fetchObjects(apiParams);
 
+  // Filter map points
+  const mapPoints = allMapPoints.filter((p) => {
+    if (p.region.slug !== params.region) return false;
+    if (effectiveCity && p.cityOrDistrict.slug !== effectiveCity) return false;
+    if (effectiveType && p.objectType.slug !== effectiveType) return false;
+    return true;
+  });
+
   // Build page context
   const cityData = effectiveCity ? region.cities.find((c) => c.slug === effectiveCity) : undefined;
   const typeData = effectiveType ? types.find((t) => t.slug === effectiveType) : undefined;
@@ -176,11 +185,10 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   if (typeData && cityData) breadcrumbs.push({ name: typeData.name });
   else if (typeData) breadcrumbs.push({ name: typeData.name });
 
-  // Current path for popular queries
   const currentPath = `/${region.slug}/${params.slug.join("/")}/`;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="max-w-[1440px] mx-auto px-4 py-6">
       {hasFilters && (
         <meta name="robots" content="noindex,follow" />
       )}
@@ -188,20 +196,19 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       <Breadcrumbs items={breadcrumbs} />
 
       <h1 className="text-2xl md:text-3xl font-bold mb-2">{h1}</h1>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-4">
         Глэмпинги, гостевые дома и бани для аренды посуточно
       </p>
 
-      {/* Sub-navigation: types if on city page, cities if on type page */}
+      {/* Filter bar: types (if on city page) */}
       {!typeData && !isTypePage && types.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Типы размещения</h2>
+        <div className="mb-3">
           <div className="flex flex-wrap gap-2">
             {types.map((t) => (
               <a
                 key={t.id}
                 href={effectiveCity ? `/${region.slug}/${effectiveCity}/${t.slug}/` : `/${region.slug}/${t.slug}/`}
-                className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-primary-50 hover:text-primary-700 rounded-full transition border border-gray-200"
+                className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-primary-50 hover:text-primary-700 rounded-full transition border border-gray-200 font-medium"
               >
                 {t.name}
               </a>
@@ -210,15 +217,15 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
         </div>
       )}
 
+      {/* Filter bar: cities (if on type page) */}
       {!effectiveCity && region.cities.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Города и районы</h2>
+        <div className="mb-3">
           <div className="flex flex-wrap gap-2">
             {region.cities.map((c) => (
               <a
                 key={c.id}
                 href={effectiveType ? `/${region.slug}/${c.slug}/${effectiveType}/` : `/${region.slug}/${c.slug}/`}
-                className="text-sm px-3 py-1.5 bg-gray-100 hover:bg-primary-50 hover:text-primary-700 rounded-full transition border border-gray-200"
+                className="text-sm px-3 py-1.5 bg-white hover:bg-primary-50 hover:text-primary-700 rounded-full transition border border-gray-200"
               >
                 {c.name}
               </a>
@@ -227,9 +234,62 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      <ObjectGrid objects={objects} total={total} />
+      {/* Popular queries */}
+      {popularQueries.length > 0 && (
+        <div className="mb-5 flex flex-wrap gap-2">
+          {popularQueries.map((q) => (
+            <a
+              key={q.id}
+              href={`${currentPath}?${q.filterParam}`}
+              className="text-xs px-3 py-1 bg-primary-50 text-primary-700 rounded-full border border-primary-200 hover:bg-primary-100 transition"
+            >
+              {q.text}
+            </a>
+          ))}
+        </div>
+      )}
 
-      <PopularQueries queries={popularQueries} basePath={currentPath} />
+      {/* Count */}
+      <p className="text-sm text-gray-500 mb-4">
+        {total > 0
+          ? `Найдено: ${total} ${pluralize(total, "объект", "объекта", "объектов")}`
+          : "Объекты не найдены"}
+      </p>
+
+      {/* Main layout: cards (2/3) + map (1/3) */}
+      <div className="flex gap-6">
+        {/* Cards */}
+        <div className="flex-1 min-w-0">
+          {objects.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg">Объекты не найдены</p>
+              <p className="text-sm mt-2">Попробуйте изменить параметры поиска</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {objects.map((obj) => (
+                <ObjectCardWide key={obj.id} obj={obj} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Map */}
+        <div className="hidden lg:block w-[420px] shrink-0">
+          <div className="sticky top-20 h-[calc(100vh-6rem)] rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+            <ListingMap points={mapPoints} />
+          </div>
+        </div>
+      </div>
     </div>
   );
+}
+
+function pluralize(n: number, one: string, few: string, many: string): string {
+  const abs = Math.abs(n) % 100;
+  const lastDigit = abs % 10;
+  if (abs > 10 && abs < 20) return many;
+  if (lastDigit > 1 && lastDigit < 5) return few;
+  if (lastDigit === 1) return one;
+  return many;
 }
