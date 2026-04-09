@@ -8,6 +8,7 @@ const roleLabels: Record<string, string> = {
   User: "Арендатор",
   Owner: "Арендодатель",
   Admin: "Админ",
+  Author: "Автор",
 };
 
 export function HeaderAuth() {
@@ -81,6 +82,31 @@ export function HeaderAuth() {
                   </a>
                 </>
               )}
+              {user.role === "Author" && (
+                <>
+                  <a
+                    href="/dashboard/admin/blog/"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span>📝</span> Мои статьи
+                  </a>
+                  <a
+                    href="/dashboard/admin/blog/new/"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span>➕</span> Создать статью
+                  </a>
+                  <a
+                    href="/dashboard/author-profile/"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span>👤</span> Профиль
+                  </a>
+                </>
+              )}
               {user.role === "Admin" && (
                 <>
                   <div className="border-t border-gray-100 my-1" />
@@ -119,6 +145,13 @@ export function HeaderAuth() {
                     onClick={() => setMenuOpen(false)}
                   >
                     <span>🔍</span> SEO
+                  </a>
+                  <a
+                    href="/dashboard/admin/blog/"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span>📝</span> Путеводитель
                   </a>
                 </>
               )}

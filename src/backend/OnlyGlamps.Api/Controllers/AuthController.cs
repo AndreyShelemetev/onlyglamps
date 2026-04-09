@@ -101,7 +101,10 @@ public class AuthController : ControllerBase
         user.AvatarUrl,
         user.Email,
         Role = user.Role.ToString(),
-        HasOwnerProfile = user.OwnerProfile != null
+        HasOwnerProfile = user.OwnerProfile != null,
+        user.Bio,
+        user.VkUrl,
+        user.TelegramUrl
     };
 }
 

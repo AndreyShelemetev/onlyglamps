@@ -293,3 +293,87 @@ export async function fetchCatalogTags() {
   const res = await fetch(`${API_BASE}/catalog/tags`);
   return safeJson(res);
 }
+
+// === Blog Admin API ===
+
+export async function blogAdminList(token: string) {
+  const res = await authFetch("/blog/admin/list", token);
+  return safeJson(res);
+}
+
+export async function blogAdminGet(token: string, id: number) {
+  const res = await authFetch(`/blog/admin/${id}`, token);
+  return safeJson(res);
+}
+
+export async function blogAdminCreate(token: string, data: any) {
+  const res = await authFetch("/blog/admin", token, { method: "POST", body: JSON.stringify(data) });
+  return safeJson(res);
+}
+
+export async function blogAdminUpdate(token: string, id: number, data: any) {
+  const res = await authFetch(`/blog/admin/${id}`, token, { method: "PUT", body: JSON.stringify(data) });
+  return safeJson(res);
+}
+
+export async function blogAdminDelete(token: string, id: number) {
+  const res = await authFetch(`/blog/admin/${id}`, token, { method: "DELETE" });
+  if (res.ok) return { success: true };
+  return safeJson(res);
+}
+
+export async function blogUploadImage(token: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/blog/admin/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (res.status === 401) {
+    localStorage.removeItem("og_token");
+    window.location.href = "/";
+    throw new Error("Unauthorized");
+  }
+  return safeJson(res);
+}
+
+// ── Author profile ──
+
+export async function getAuthorProfile(token: string) {
+  const res = await authFetch("/blog/author/profile", token);
+  return safeJson(res);
+}
+
+export async function updateAuthorProfile(
+  token: string,
+  data: {
+    firstName: string;
+    lastName?: string | null;
+    bio?: string | null;
+    vkUrl?: string | null;
+    telegramUrl?: string | null;
+  }
+) {
+  const res = await authFetch("/blog/author/profile", token, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return safeJson(res);
+}
+
+export async function uploadAuthorAvatar(token: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/blog/author/avatar`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (res.status === 401) {
+    localStorage.removeItem("og_token");
+    window.location.href = "/";
+    throw new Error("Unauthorized");
+  }
+  return safeJson(res);
+}

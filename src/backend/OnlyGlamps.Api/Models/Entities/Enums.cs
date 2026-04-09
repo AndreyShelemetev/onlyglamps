@@ -4,7 +4,8 @@ public enum UserRole
 {
     User = 0,
     Owner = 1,
-    Admin = 2
+    Admin = 2,
+    Author = 3
 }
 
 public enum ObjectStatus
@@ -28,4 +29,11 @@ public enum ReviewStatus
     Pending = 0,
     Published = 1,
     Hidden = 2
+}
+
+public enum ArticleStatus
+{
+    Draft = 0,
+    Published = 1,
+    Archived = 2
 }

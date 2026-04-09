@@ -145,3 +145,58 @@ export async function fetchMapPoints(): Promise<MapPoint[]> {
     return [];
   }
 }
+
+// ── Blog ──
+
+export interface ArticleListItem {
+  id: number;
+  title: string;
+  h1: string;
+  description: string;
+  slug: string;
+  coverImageUrl: string | null;
+  views: number;
+  readTimeMinutes: number;
+  createdAt: string;
+  author: { firstName: string; lastName: string | null };
+}
+
+export interface ArticleDetail extends Omit<ArticleListItem, "author"> {
+  content: string;
+  updatedAt: string;
+  author: {
+    firstName: string;
+    lastName: string | null;
+    avatarUrl: string | null;
+    bio: string | null;
+    vkUrl: string | null;
+    telegramUrl: string | null;
+  };
+}
+
+export interface ArticlesResponse {
+  data: ArticleListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function fetchArticles(page = 1, pageSize = 20): Promise<ArticlesResponse> {
+  try {
+    const res = await fetch(`${API_URL}/api/blog?page=${page}&pageSize=${pageSize}`, { cache: "no-store" });
+    if (!res.ok) return { data: [], total: 0, page: 1, pageSize: 20 };
+    return await res.json();
+  } catch {
+    return { data: [], total: 0, page: 1, pageSize: 20 };
+  }
+}
+
+export async function fetchArticleBySlug(slug: string): Promise<ArticleDetail | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/blog/${encodeURIComponent(slug)}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}

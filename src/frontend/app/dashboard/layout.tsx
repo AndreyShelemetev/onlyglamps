@@ -16,6 +16,7 @@ const adminLinks = [
   { href: "/dashboard/admin/regions/", label: "Регионы и города", icon: "🗺️" },
   { href: "/dashboard/admin/types/", label: "Типы объектов", icon: "🏷️" },
   { href: "/dashboard/admin/catalog/", label: "Теги и удобства", icon: "🧩" },
+  { href: "/dashboard/admin/blog/", label: "Путеводитель", icon: "📝" },
   { href: "/dashboard/admin/seo/", label: "SEO", icon: "🔍" },
 ];
 
@@ -44,7 +45,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   const isAdmin = user.role === "Admin";
-  const links = isAdmin ? [...ownerLinks, ...adminLinks] : ownerLinks;
+  const isAuthor = user.role === "Author";
+
+  const authorLinks = [
+    { href: "/dashboard/admin/blog/", label: "Мои статьи", icon: "📝" },
+    { href: "/dashboard/admin/blog/new/", label: "Создать статью", icon: "➕" },
+    { href: "/dashboard/author-profile/", label: "Профиль", icon: "👤" },
+  ];
+
+  const links = isAdmin
+    ? [...ownerLinks, ...adminLinks]
+    : isAuthor
+    ? authorLinks
+    : ownerLinks;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">

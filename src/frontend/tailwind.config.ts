@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import typography from "@tailwindcss/typography";
 
 const config: Config = {
   content: [
@@ -47,7 +48,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
   safelist: [
     'from-emerald-400', 'to-emerald-700',
     'from-orange-500', 'to-red-600',

@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { HeaderAuth } from "@/components/HeaderAuth";
 import { HeaderNav } from "@/components/HeaderNav";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://onlyglamps.ru"),
@@ -55,7 +56,7 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col">
         <AuthProvider>
         <header className="bg-white/95 backdrop-blur-md border-b border-navy-200 sticky top-0 z-50">
-          <nav className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <nav className="max-w-[1440px] mx-auto px-4 h-16 flex items-center justify-between">
             <div className="flex items-center gap-6">
               <a href="/" className="flex items-center gap-2 shrink-0">
                 <img src="/logo.png" alt="OnlyGlamps" className="h-20 w-auto" />
@@ -90,6 +91,9 @@ export default function RootLayout({
                   </li>
                   <li>
                     <a href="/owners/" className="hover:text-white transition">Сдать объект</a>
+                  </li>
+                  <li>
+                    <a href="/blog/" className="hover:text-white transition">Путеводитель</a>
                   </li>
                 </ul>
               </div>
@@ -145,6 +149,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        <ScrollToTop />
         </AuthProvider>
       </body>
     </html>

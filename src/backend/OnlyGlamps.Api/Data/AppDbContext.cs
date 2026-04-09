@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<Inquiry> Inquiries => Set<Inquiry>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<ObjectTag> ObjectTags => Set<ObjectTag>();
+    public DbSet<Article> Articles => Set<Article>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -217,6 +218,18 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.Inquiries)
                 .HasForeignKey(i => i.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Article
+        modelBuilder.Entity<Article>(e =>
+        {
+            e.HasIndex(a => a.Slug).IsUnique();
+            e.Property(a => a.Status).HasConversion<string>();
+
+            e.HasOne(a => a.Author)
+                .WithMany(u => u.Articles)
+                .HasForeignKey(a => a.AuthorId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
