@@ -223,8 +223,8 @@ export function HeaderNav() {
         </a>
       </div>
 
-      {/* Mobile hamburger */}
-      <MobileMenu />
     </>
   );
 }
+
+export { MobileMenu };

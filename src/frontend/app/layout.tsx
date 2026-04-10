@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { HeaderAuth } from "@/components/HeaderAuth";
-import { HeaderNav } from "@/components/HeaderNav";
+import { HeaderNav, MobileMenu } from "@/components/HeaderNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
 
 export const metadata: Metadata = {
@@ -71,6 +71,7 @@ export default function RootLayout({
                 Сдать объект
               </a>
               <HeaderAuth />
+              <MobileMenu />
             </div>
           </nav>
         </header>
