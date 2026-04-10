@@ -71,11 +71,12 @@ export default async function RegionPage({ params, searchParams }: Props) {
           regionSlug={region.slug}
           total={total}
           prices={mapPoints.map((p) => p.minPrice).filter((p): p is number => p !== null)}
+          mapPoints={mapPoints}
         />
       </Suspense>
 
       {/* Main layout: cards (50%) + map (50%) */}
-      <div className="flex gap-6">
+      <div className="flex gap-6 pb-20 lg:pb-0">
         {/* Cards */}
         <div className="w-full lg:w-1/2 min-w-0">
           {objects.length === 0 ? (

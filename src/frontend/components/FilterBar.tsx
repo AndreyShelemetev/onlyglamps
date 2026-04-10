@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ListingMap } from "@/components/ListingMap";
+import type { MapPoint } from "@/lib/api";
 
 interface FilterBarProps {
   types: { id: number; name: string; slug: string }[];
@@ -14,6 +16,8 @@ interface FilterBarProps {
   total: number;
   /** All prices for histogram (from mapPoints minPrice) */
   prices?: number[];
+  /** Map points for mobile map modal */
+  mapPoints?: MapPoint[];
 }
 
 const amenityFilters = [
@@ -157,6 +161,7 @@ export function FilterBar({
   regionSlug,
   total,
   prices = [],
+  mapPoints = [],
 }: FilterBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -260,13 +265,31 @@ export function FilterBar({
 
   const sortLabel = sortOptions.find((o) => o.value === currentSort)?.label || "Рекомендации";
 
+  const [mapOpen, setMapOpen] = useState(false);
+
+  // Close map modal on Escape
+  useEffect(() => {
+    if (!mapOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMapOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [mapOpen]);
+
   return (
     <>
       <div className="mb-5 space-y-3">
-        {/* ── Row 1: Type pills (colored like map page) ── */}
+        {/* ── Row 1: Type pills ── */}
         {types.length > 0 && (
-          <div className="bg-white border-b border-gray-200 -mx-4 px-4 py-2.5 flex items-center gap-2 overflow-x-auto">
-            {types.map((t) => {
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 lg:hidden">Типы объектов</p>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+              {types.map((t) => {
               const isActive = activeType === t.slug;
               const colors = typeColors[t.slug] || defaultTypeColor;
               const href = isActive
@@ -288,11 +311,14 @@ export function FilterBar({
               );
             })}
           </div>
+          </div>
         )}
 
         {/* ── Row 2: City pills ── */}
         {cities && cities.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 lg:hidden">Города, районы</p>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
             {cities.map((c) => {
               const isActive = activeCity === c.slug;
               const href = isActive
@@ -316,39 +342,17 @@ export function FilterBar({
               );
             })}
           </div>
+          </div>
         )}
 
-        {/* ── Row 3: Control bar — Filters button, Sort, Count ── */}
+        {/* ── Row 3: Sort (full-width on mobile) + Count ── */}
         <div className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
-          {/* Filters button */}
-          <button
-            onClick={() => setModalOpen(true)}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              filterCount > 0
-                ? "bg-primary-600 text-white hover:bg-primary-700"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            Фильтры
-            {filterCount > 0 && (
-              <span className="bg-white text-primary-700 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {filterCount}
-              </span>
-            )}
-          </button>
-
-          {/* Divider */}
-          <div className="w-px h-6 bg-gray-200" />
-
           {/* Sort */}
-          <div className="relative">
+          <div className="relative flex-1 lg:flex-none">
             <select
               value={currentSort}
               onChange={(e) => setSort(e.target.value)}
-              className="appearance-none bg-transparent text-sm font-medium text-gray-700 pr-6 cursor-pointer focus:outline-none"
+              className="appearance-none w-full lg:w-auto bg-transparent text-sm font-semibold text-gray-800 pr-7 cursor-pointer focus:outline-none"
             >
               {sortOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -361,8 +365,8 @@ export function FilterBar({
             </svg>
           </div>
 
-          {/* Spacer */}
-          <div className="flex-1" />
+          {/* Divider */}
+          <div className="w-px h-6 bg-gray-200" />
 
           {/* Count */}
           <span className="text-sm text-gray-500 whitespace-nowrap">
@@ -419,9 +423,9 @@ export function FilterBar({
           </div>
         )}
 
-        {/* ── Row 5: Popular queries ── */}
+        {/* ── Row 5: Popular queries (desktop only, on mobile inside filter modal) ── */}
         {popularQueries && popularQueries.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="hidden lg:flex flex-wrap gap-2">
             {popularQueries.map((q) => (
               <a
                 key={q.id}
@@ -558,6 +562,28 @@ export function FilterBar({
                   })}
                 </div>
               </div>
+
+              {/* ── Popular queries (shown in modal on mobile) ── */}
+              {popularQueries && popularQueries.length > 0 && (
+                <>
+                  <hr className="border-gray-100" />
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 mb-3">Быстрые фильтры</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {popularQueries.map((q) => (
+                        <a
+                          key={q.id}
+                          href={`${basePath}?${q.filterParam}`}
+                          onClick={() => setModalOpen(false)}
+                          className="text-xs px-3 py-1.5 bg-amber-50 text-amber-800 rounded-full border border-amber-200 hover:bg-amber-100 font-medium transition"
+                        >
+                          {q.text}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}
@@ -575,6 +601,56 @@ export function FilterBar({
                 Показать результаты
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+         STICKY BOTTOM BAR (mobile only)
+         ================================================================ */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-3 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+        <button
+          onClick={() => setModalOpen(true)}
+          className={`flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition ${
+            filterCount > 0
+              ? "bg-primary-600 text-white"
+              : "bg-gray-900 text-white"
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          Фильтры{filterCount > 0 ? ` (${filterCount})` : ""}
+        </button>
+        <button
+          onClick={() => setMapOpen(true)}
+          className="flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold bg-white text-gray-800 border-2 border-gray-300 transition hover:bg-gray-50"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          На карте
+        </button>
+      </div>
+
+      {/* ================================================================
+         MAP MODAL (fullscreen, mobile)
+         ================================================================ */}
+      {mapOpen && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+            <h2 className="text-lg font-bold text-gray-900">Карта объектов</h2>
+            <button
+              onClick={() => setMapOpen(false)}
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          </div>
+          {/* Map container */}
+          <div className="flex-1 relative">
+            <ListingMap points={mapPoints} />
           </div>
         </div>
       )}
