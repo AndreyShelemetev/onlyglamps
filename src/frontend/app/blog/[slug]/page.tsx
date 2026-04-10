@@ -67,63 +67,17 @@ export default async function ArticlePage({ params }: Props) {
   });
 
   return (
-    <main className="max-w-[1440px] mx-auto px-4 py-8">
+    <main className="max-w-5xl mx-auto px-6 md:px-10 py-8">
       {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-primary-600 transition">
-          Главная
-        </Link>
-        <span>/</span>
         <Link href="/blog/" className="hover:text-primary-600 transition">
           Путеводитель
         </Link>
-        <span>/</span>
+        <span>&gt;</span>
         <span className="text-navy-900 font-medium line-clamp-1">
-          {article.title}
+          {article.title.length > 30 ? article.title.substring(0, 30) + "…" : article.title}
         </span>
       </nav>
-
-      {/* Cover image */}
-      {article.coverImageUrl && (
-        <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden mb-8">
-          <SafeImage
-            src={article.coverImageUrl}
-            alt={article.h1}
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="eager"
-          />
-        </div>
-      )}
-
-      {/* Meta info */}
-      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
-        <span className="flex items-center gap-1.5">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {article.readTimeMinutes} мин чтения
-        </span>
-        <span className="flex items-center gap-1.5">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
-          {article.views} просмотров
-        </span>
-        <span>{date}</span>
-        {article.author && (
-          <span className="flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            {article.author.firstName} {article.author.lastName || ""}
-          </span>
-        )}
-      </div>
-
-      <h1 className="text-3xl md:text-4xl font-bold text-navy-900 mb-8">
-        {article.h1}
-      </h1>
 
       {/* Content + Sidebar */}
       <div className="flex gap-10">
@@ -134,16 +88,55 @@ export default async function ArticlePage({ params }: Props) {
           </aside>
         )}
 
-        {/* Article body */}
-        <article
-          className="flex-1 min-w-0 prose prose-lg max-w-none
-            prose-headings:text-navy-900 prose-headings:font-bold
-            prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
-            prose-p:text-gray-700 prose-p:leading-relaxed
-            prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
-            prose-img:rounded-xl prose-img:shadow-md"
-          dangerouslySetInnerHTML={{ __html: contentWithIds }}
-        />
+        {/* Article header + body */}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-3xl md:text-4xl font-bold text-navy-900 mb-4">
+            {article.h1}
+          </h1>
+
+          {/* Meta info */}
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-6">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {article.readTimeMinutes} минут
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {article.views}
+            </span>
+            <span className="text-gray-300">•</span>
+            <span>{date}</span>
+          </div>
+
+          {/* Cover image */}
+          {article.coverImageUrl && (
+            <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden mb-8">
+              <SafeImage
+                src={article.coverImageUrl}
+                alt={article.h1}
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="eager"
+              />
+            </div>
+          )}
+
+          {/* Article body */}
+          <article
+            className="prose prose-lg max-w-none
+              prose-headings:text-navy-900 prose-headings:font-bold
+              prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
+              prose-p:text-gray-700 prose-p:leading-relaxed
+              prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
+              prose-img:rounded-xl prose-img:shadow-md"
+            dangerouslySetInnerHTML={{ __html: contentWithIds }}
+          />
+        </div>
       </div>
 
       {/* Author card */}
