@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
@@ -77,10 +77,14 @@ export default function AdminTypeFieldsPage() {
   const [fields, setFields] = useState<FieldItem[]>([]);
   const [disabledBuiltins, setDisabledBuiltins] = useState<Set<string>>(new Set());
   const [savingBuiltins, setSavingBuiltins] = useState(false);
+  const [builtinsSavedAt, setBuiltinsSavedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [highlightId, setHighlightId] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<FieldItem>>(EMPTY);
   const [editing, setEditing] = useState<FieldItem | null>(null);
+  const fieldsListRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -115,6 +119,7 @@ export default function AdminTypeFieldsPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
     if (!draft.label?.trim()) { setError("Укажите название поля"); return; }
 
     const payload = {
@@ -131,22 +136,40 @@ export default function AdminTypeFieldsPage() {
       sortOrder: editing?.sortOrder,
     };
 
+    const wasEditing = !!editing;
     const res = editing
       ? await adminUpdateTypeField(token!, editing.id, payload)
       : await adminCreateTypeField(token!, typeId, payload);
     if (res?.error) { setError(res.error); return; }
+    const savedId = editing?.id ?? res?.id ?? null;
     resetForm();
-    load();
+    await load();
+    setSuccessMsg(wasEditing ? "Поле обновлено" : "Поле добавлено");
+    setTimeout(() => setSuccessMsg(""), 2500);
+    if (savedId) {
+      setHighlightId(savedId);
+      setTimeout(() => setHighlightId(null), 2000);
+      // Scroll the fields list into view so the user sees the new entry.
+      setTimeout(() => {
+        fieldsListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
   }
 
   async function handleDelete(id: number) {
     if (!confirm("Удалить поле? Значения у объектов тоже будут удалены.")) return;
+    setError("");
+    setSuccessMsg("");
     const res = await adminDeleteTypeField(token!, id);
     if (res?.error) { setError(res.error); return; }
-    load();
+    await load();
+    setSuccessMsg("Поле удалено");
+    setTimeout(() => setSuccessMsg(""), 2500);
   }
 
   async function toggleBuiltin(key: string, enabled: boolean) {
+    setError("");
+    const prev = new Set(disabledBuiltins);
     const next = new Set(disabledBuiltins);
     if (enabled) next.delete(key); else next.add(key);
     setDisabledBuiltins(next);
@@ -155,10 +178,13 @@ export default function AdminTypeFieldsPage() {
     setSavingBuiltins(false);
     if (res?.error) {
       setError(res.error);
-      // откатим локальный тумблер
-      const revert = new Set(disabledBuiltins);
-      setDisabledBuiltins(revert);
+      setDisabledBuiltins(prev);
+      return;
     }
+    setBuiltinsSavedAt(Date.now());
+    setTimeout(() => {
+      setBuiltinsSavedAt((t) => (t && Date.now() - t >= 2000 ? null : t));
+    }, 2100);
   }
 
   function startEdit(f: FieldItem) {
@@ -201,16 +227,26 @@ export default function AdminTypeFieldsPage() {
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {successMsg && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+          <span>✓</span>
+          <span>{successMsg}</span>
+        </div>
+      )}
 
       <section className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Встроенные параметры</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Снимите галочку, чтобы убрать параметр из формы редактора для этого типа.
+              Снимите галочку, чтобы убрать параметр из формы редактора для этого типа. Изменения сохраняются автоматически.
             </p>
           </div>
-          {savingBuiltins && <span className="text-xs text-gray-400">Сохранение…</span>}
+          {savingBuiltins ? (
+            <span className="text-xs text-gray-400">Сохранение…</span>
+          ) : builtinsSavedAt ? (
+            <span className="text-xs text-emerald-600 font-medium">Сохранено ✓</span>
+          ) : null}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
           {BUILTIN_FIELDS.map((b) => {
@@ -362,7 +398,7 @@ export default function AdminTypeFieldsPage() {
         </div>
       </form>
 
-      <div className="bg-white border border-gray-200 rounded-xl">
+      <div ref={fieldsListRef} className="bg-white border border-gray-200 rounded-xl">
         <div className="px-5 py-3 border-b border-gray-200 text-sm font-semibold text-gray-900">
           Поля ({fields.length})
         </div>
@@ -373,7 +409,12 @@ export default function AdminTypeFieldsPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {fields.map((f) => (
-              <div key={f.id} className="px-5 py-3 flex items-center justify-between gap-3">
+              <div
+                key={f.id}
+                className={`px-5 py-3 flex items-center justify-between gap-3 transition-colors ${
+                  highlightId === f.id ? "bg-emerald-50" : ""
+                }`}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm text-gray-900">{f.label}</span>

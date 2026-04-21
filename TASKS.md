@@ -174,3 +174,4 @@
 - [x] Отдача fieldSchema + customFields в GET объекта (admin, owner, public)
 - [x] Страница админки /dashboard/admin/types/{id}/fields/
 - [x] BlockCustomFields в редакторе объекта (number, text, textarea, boolean, select)
+- [x] UX-обратная связь для сохранения полей и встроенных параметров типа
