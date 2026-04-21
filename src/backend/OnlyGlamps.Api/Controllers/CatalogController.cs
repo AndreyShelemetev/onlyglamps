@@ -20,7 +20,10 @@ public class CatalogController : ControllerBase
     {
         var types = await _db.ObjectTypes
             .OrderBy(t => t.Name)
-            .Select(t => new { t.Id, t.Name, t.Slug, t.Icon, t.ColorFrom, t.ColorTo })
+            .Select(t => new {
+                t.Id, t.Name, t.Slug, t.Icon, t.ColorFrom, t.ColorTo,
+                DisabledBuiltinFields = t.DisabledBuiltinFields ?? ""
+            })
             .ToListAsync();
         return Ok(types);
     }

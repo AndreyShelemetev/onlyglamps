@@ -73,6 +73,9 @@ app.MapControllers();
     // Idempotent schema upgrade for dynamic object-type fields (works on existing DBs,
     // where EnsureCreated skips creation because the schema already exists).
     await db.Database.ExecuteSqlRawAsync(@"
+        ALTER TABLE ""ObjectTypes""
+            ADD COLUMN IF NOT EXISTS ""DisabledBuiltinFields"" TEXT NULL;
+
         CREATE TABLE IF NOT EXISTS ""ObjectTypeFields"" (
             ""Id"" SERIAL PRIMARY KEY,
             ""ObjectTypeId"" INTEGER NOT NULL REFERENCES ""ObjectTypes""(""Id"") ON DELETE CASCADE,

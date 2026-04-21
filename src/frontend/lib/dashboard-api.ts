@@ -282,6 +282,14 @@ export async function adminDeleteTypeField(token: string, fieldId: number) {
   return safeJson(res);
 }
 
+export async function adminUpdateBuiltinFields(token: string, typeId: number, disabledKeys: string[]) {
+  const res = await authFetch(`/admin/types/${typeId}/builtin-fields`, token, {
+    method: "PUT",
+    body: JSON.stringify({ disabledKeys }),
+  });
+  return safeJson(res);
+}
+
 // Public: dynamic fields schema for a type (used on object editor)
 export async function fetchTypeFields(typeId: number) {
   const res = await fetch(`${API_BASE}/catalog/types/${typeId}/fields`);

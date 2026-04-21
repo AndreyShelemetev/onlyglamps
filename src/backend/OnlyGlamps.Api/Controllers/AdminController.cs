@@ -281,7 +281,11 @@ public class AdminController : ControllerBase
 
     [HttpGet("types")]
     public async Task<IActionResult> GetTypes() =>
-        Ok(await _db.ObjectTypes.OrderBy(t => t.Name).Select(t => new { t.Id, t.Name, t.Slug, t.Icon, t.ColorFrom, t.ColorTo, ObjectCount = t.Objects.Count }).ToListAsync());
+        Ok(await _db.ObjectTypes.OrderBy(t => t.Name).Select(t => new {
+            t.Id, t.Name, t.Slug, t.Icon, t.ColorFrom, t.ColorTo,
+            DisabledBuiltinFields = t.DisabledBuiltinFields ?? "",
+            ObjectCount = t.Objects.Count
+        }).ToListAsync());
 
     [HttpPost("types")]
     public async Task<IActionResult> CreateType([FromBody] NameSlugRequest req)
@@ -304,6 +308,33 @@ public class AdminController : ControllerBase
         type.ColorTo = req.ColorTo;
         await _db.SaveChangesAsync();
         return Ok(new { type.Id, type.Name, type.Slug, type.Icon, type.ColorFrom, type.ColorTo });
+    }
+
+    // Allowed "built-in" field keys that can be disabled per object type.
+    // Must match what BlockParams renders on the frontend.
+    private static readonly HashSet<string> AllowedBuiltinKeys = new(StringComparer.Ordinal)
+    {
+        "capacity", "beds", "rooms", "area",
+        "minRentalDays", "maxRentalDays",
+        "checkInTime", "checkOutTime",
+        "isWhole", "childrenAllowed", "petsAllowed", "smokingAllowed", "eventsAllowed",
+        "deposit", "rules"
+    };
+
+    [HttpPut("types/{id:int}/builtin-fields")]
+    public async Task<IActionResult> UpdateBuiltinFields(int id, [FromBody] BuiltinFieldsRequest req)
+    {
+        var type = await _db.ObjectTypes.FindAsync(id);
+        if (type == null) return NotFound();
+
+        var disabled = (req.DisabledKeys ?? new List<string>())
+            .Where(k => !string.IsNullOrWhiteSpace(k) && AllowedBuiltinKeys.Contains(k))
+            .Distinct()
+            .ToList();
+
+        type.DisabledBuiltinFields = disabled.Count == 0 ? null : string.Join(",", disabled);
+        await _db.SaveChangesAsync();
+        return Ok(new { disabledKeys = disabled });
     }
 
     // ===================== OBJECT TYPE FIELDS (dynamic parameters) =====================
@@ -726,4 +757,9 @@ public class ObjectTypeFieldRequest
     public decimal? MaxValue { get; set; }
     public bool IsRequired { get; set; }
     public int? SortOrder { get; set; }
+}
+
+public class BuiltinFieldsRequest
+{
+    public List<string>? DisabledKeys { get; set; }
 }

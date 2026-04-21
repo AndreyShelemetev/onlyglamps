@@ -9,6 +9,7 @@ import {
   adminCreateTypeField,
   adminUpdateTypeField,
   adminDeleteTypeField,
+  adminUpdateBuiltinFields,
 } from "@/lib/dashboard-api";
 
 interface FieldItem {
@@ -47,6 +48,26 @@ const TYPE_LABELS: Record<string, string> = {
   select: "Выбор из списка",
 };
 
+// Встроенные параметры объекта (их можно отключить для конкретного типа).
+// Ключи должны совпадать с AllowedBuiltinKeys на бэкенде и с полями BlockParams.
+const BUILTIN_FIELDS: { key: string; label: string; hint?: string }[] = [
+  { key: "capacity", label: "Вместимость гостей" },
+  { key: "beds", label: "Спальных мест" },
+  { key: "rooms", label: "Комнат" },
+  { key: "area", label: "Площадь, м²" },
+  { key: "minRentalDays", label: "Мин. срок аренды (дней)" },
+  { key: "maxRentalDays", label: "Макс. срок аренды (дней)" },
+  { key: "checkInTime", label: "Время заезда" },
+  { key: "checkOutTime", label: "Время выезда" },
+  { key: "isWhole", label: "Можно снять целиком" },
+  { key: "childrenAllowed", label: "Можно с детьми" },
+  { key: "petsAllowed", label: "Можно с питомцами" },
+  { key: "smokingAllowed", label: "Можно курить" },
+  { key: "eventsAllowed", label: "Можно мероприятия" },
+  { key: "deposit", label: "Залог / депозит" },
+  { key: "rules", label: "Правила проживания" },
+];
+
 export default function AdminTypeFieldsPage() {
   const params = useParams();
   const typeId = Number(params.id);
@@ -54,6 +75,8 @@ export default function AdminTypeFieldsPage() {
 
   const [typeName, setTypeName] = useState("");
   const [fields, setFields] = useState<FieldItem[]>([]);
+  const [disabledBuiltins, setDisabledBuiltins] = useState<Set<string>>(new Set());
+  const [savingBuiltins, setSavingBuiltins] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Partial<FieldItem>>(EMPTY);
@@ -74,6 +97,8 @@ export default function AdminTypeFieldsPage() {
       ]);
       const found = Array.isArray(types) ? types.find((t: any) => t.id === typeId) : null;
       setTypeName(found?.name || `Тип #${typeId}`);
+      const raw = (found?.disabledBuiltinFields || "") as string;
+      setDisabledBuiltins(new Set(raw.split(",").map((s: string) => s.trim()).filter(Boolean)));
       setFields(Array.isArray(list) ? list : []);
     } catch {
       setError("Ошибка загрузки");
@@ -121,6 +146,21 @@ export default function AdminTypeFieldsPage() {
     load();
   }
 
+  async function toggleBuiltin(key: string, enabled: boolean) {
+    const next = new Set(disabledBuiltins);
+    if (enabled) next.delete(key); else next.add(key);
+    setDisabledBuiltins(next);
+    setSavingBuiltins(true);
+    const res = await adminUpdateBuiltinFields(token!, typeId, Array.from(next));
+    setSavingBuiltins(false);
+    if (res?.error) {
+      setError(res.error);
+      // откатим локальный тумблер
+      const revert = new Set(disabledBuiltins);
+      setDisabledBuiltins(revert);
+    }
+  }
+
   function startEdit(f: FieldItem) {
     setEditing(f);
     setDraft({
@@ -161,6 +201,34 @@ export default function AdminTypeFieldsPage() {
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
+
+      <section className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Встроенные параметры</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Снимите галочку, чтобы убрать параметр из формы редактора для этого типа.
+            </p>
+          </div>
+          {savingBuiltins && <span className="text-xs text-gray-400">Сохранение…</span>}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
+          {BUILTIN_FIELDS.map((b) => {
+            const enabled = !disabledBuiltins.has(b.key);
+            return (
+              <label key={b.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => toggleBuiltin(b.key, e.target.checked)}
+                  className="w-4 h-4 accent-primary-600"
+                />
+                <span className={enabled ? "" : "text-gray-400 line-through"}>{b.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
 
       <form onSubmit={handleSave} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
         <div className="text-sm font-semibold text-gray-900">

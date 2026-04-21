@@ -59,6 +59,7 @@ export interface CatalogOption {
   name: string;
   slug: string;
   icon?: string;
+  disabledBuiltinFields?: string;
 }
 
 export interface RegionOption {

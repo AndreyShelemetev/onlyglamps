@@ -255,7 +255,11 @@ export default function EditObjectPage() {
       )}
 
       <BlockBasicInfo data={formData} onChange={updateForm} regions={regions} types={types} cities={cities} />
-      <BlockParams data={formData} onChange={updateForm} />
+      <BlockParams
+        data={formData}
+        onChange={updateForm}
+        disabledKeys={(types.find((t) => t.id === formData.objectTypeId)?.disabledBuiltinFields || "").split(",").map((s) => s.trim()).filter(Boolean)}
+      />
       <BlockCustomFields
         objectTypeId={formData.objectTypeId}
         values={customFields}
