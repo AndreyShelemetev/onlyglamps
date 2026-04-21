@@ -78,9 +78,16 @@ public class AdminController : ControllerBase
             .Include(o => o.ObjectTags).ThenInclude(ot => ot.Tag)
             .Include(o => o.AvailabilityDates)
             .Include(o => o.SourceLink)
+            .Include(o => o.FieldValues)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (obj == null) return NotFound();
+
+        var fieldSchema = await _db.ObjectTypeFields
+            .Where(f => f.ObjectTypeId == obj.ObjectTypeId)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id)
+            .ToListAsync();
+        var customFields = CustomFieldsService.Serialize(obj.FieldValues, fieldSchema);
 
         // Validation readiness check
         var checks = new Dictionary<string, bool>
@@ -126,7 +133,12 @@ public class AdminController : ControllerBase
             Source = obj.SourceLink != null ? new { obj.SourceLink.SourceName, obj.SourceLink.SourceUrl, obj.SourceLink.SourceType } : null,
             obj.SeoTitle, obj.SeoDescription,
             obj.UpdatedAt, obj.CreatedAt,
-            Checks = checks
+            Checks = checks,
+            FieldSchema = fieldSchema.Select(f => new {
+                f.Id, f.Key, f.Label, f.FieldType, f.Unit, f.Placeholder, f.HelpText, f.Options,
+                f.MinValue, f.MaxValue, f.IsRequired, f.SortOrder
+            }),
+            CustomFields = customFields
         });
     }
 
@@ -294,6 +306,116 @@ public class AdminController : ControllerBase
         return Ok(new { type.Id, type.Name, type.Slug, type.Icon, type.ColorFrom, type.ColorTo });
     }
 
+    // ===================== OBJECT TYPE FIELDS (dynamic parameters) =====================
+
+    [HttpGet("types/{typeId:int}/fields")]
+    public async Task<IActionResult> GetTypeFields(int typeId)
+    {
+        if (!await _db.ObjectTypes.AnyAsync(t => t.Id == typeId))
+            return NotFound(new { error = "Тип не найден" });
+
+        var fields = await _db.ObjectTypeFields
+            .Where(f => f.ObjectTypeId == typeId)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id)
+            .Select(f => new
+            {
+                f.Id, f.ObjectTypeId, f.Key, f.Label, f.FieldType,
+                f.Unit, f.Placeholder, f.HelpText, f.Options,
+                f.MinValue, f.MaxValue, f.IsRequired, f.SortOrder
+            })
+            .ToListAsync();
+
+        return Ok(fields);
+    }
+
+    [HttpPost("types/{typeId:int}/fields")]
+    public async Task<IActionResult> CreateTypeField(int typeId, [FromBody] ObjectTypeFieldRequest req)
+    {
+        if (!await _db.ObjectTypes.AnyAsync(t => t.Id == typeId))
+            return NotFound(new { error = "Тип не найден" });
+        if (string.IsNullOrWhiteSpace(req.Label))
+            return BadRequest(new { error = "Укажите название поля" });
+
+        var key = !string.IsNullOrWhiteSpace(req.Key) ? req.Key!.Trim() : SlugService.Generate(req.Label);
+        key = key.ToLowerInvariant().Replace('-', '_');
+
+        if (await _db.ObjectTypeFields.AnyAsync(f => f.ObjectTypeId == typeId && f.Key == key))
+            return BadRequest(new { error = "Поле с таким ключом уже существует" });
+
+        var maxSort = await _db.ObjectTypeFields.Where(f => f.ObjectTypeId == typeId)
+            .Select(f => (int?)f.SortOrder).MaxAsync() ?? 0;
+
+        var field = new ObjectTypeField
+        {
+            ObjectTypeId = typeId,
+            Key = key,
+            Label = req.Label.Trim(),
+            FieldType = NormalizeFieldType(req.FieldType),
+            Unit = req.Unit,
+            Placeholder = req.Placeholder,
+            HelpText = req.HelpText,
+            Options = req.Options,
+            MinValue = req.MinValue,
+            MaxValue = req.MaxValue,
+            IsRequired = req.IsRequired,
+            SortOrder = req.SortOrder ?? maxSort + 1,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.ObjectTypeFields.Add(field);
+        await _db.SaveChangesAsync();
+        return Ok(new { field.Id });
+    }
+
+    [HttpPut("fields/{id:int}")]
+    public async Task<IActionResult> UpdateTypeField(int id, [FromBody] ObjectTypeFieldRequest req)
+    {
+        var field = await _db.ObjectTypeFields.FindAsync(id);
+        if (field == null) return NotFound();
+        if (string.IsNullOrWhiteSpace(req.Label))
+            return BadRequest(new { error = "Укажите название поля" });
+
+        if (!string.IsNullOrWhiteSpace(req.Key))
+        {
+            var key = req.Key!.Trim().ToLowerInvariant().Replace('-', '_');
+            if (key != field.Key &&
+                await _db.ObjectTypeFields.AnyAsync(f => f.ObjectTypeId == field.ObjectTypeId && f.Key == key && f.Id != id))
+                return BadRequest(new { error = "Поле с таким ключом уже существует" });
+            field.Key = key;
+        }
+
+        field.Label = req.Label.Trim();
+        field.FieldType = NormalizeFieldType(req.FieldType);
+        field.Unit = req.Unit;
+        field.Placeholder = req.Placeholder;
+        field.HelpText = req.HelpText;
+        field.Options = req.Options;
+        field.MinValue = req.MinValue;
+        field.MaxValue = req.MaxValue;
+        field.IsRequired = req.IsRequired;
+        if (req.SortOrder.HasValue) field.SortOrder = req.SortOrder.Value;
+        field.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { field.Id });
+    }
+
+    [HttpDelete("fields/{id:int}")]
+    public async Task<IActionResult> DeleteTypeField(int id)
+    {
+        var field = await _db.ObjectTypeFields.FindAsync(id);
+        if (field == null) return NotFound();
+        _db.ObjectTypeFields.Remove(field);
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
+    private static string NormalizeFieldType(string? raw)
+    {
+        var allowed = new[] { "number", "text", "textarea", "boolean", "select" };
+        var t = (raw ?? "number").Trim().ToLowerInvariant();
+        return allowed.Contains(t) ? t : "number";
+    }
+
     // ===================== TAGS =====================
 
     [HttpGet("tags")]
@@ -454,6 +576,8 @@ public class AdminController : ControllerBase
         if (!string.IsNullOrWhiteSpace(req.SourceUrl))
             _db.SourceLinks.Add(new SourceLink { ObjectId = obj.Id, SourceName = req.SourceName, SourceUrl = req.SourceUrl, SourceType = req.SourceType });
 
+        await CustomFieldsService.ApplyAsync(_db, obj.Id, obj.ObjectTypeId, req.CustomFields);
+
         await _db.SaveChangesAsync();
         return Ok(new { id = obj.Id });
     }
@@ -518,6 +642,8 @@ public class AdminController : ControllerBase
         {
             _db.SourceLinks.Add(new SourceLink { ObjectId = id, SourceName = req.SourceName, SourceUrl = req.SourceUrl, SourceType = req.SourceType });
         }
+
+        await CustomFieldsService.ApplyAsync(_db, id, obj.ObjectTypeId, req.CustomFields);
 
         await _db.SaveChangesAsync();
         return Ok(new { id = obj.Id });
@@ -586,3 +712,18 @@ public class NameSlugRequest { public string Name { get; set; } = ""; public str
 public class CityRequest { public string Name { get; set; } = ""; public string? Slug { get; set; } public int RegionId { get; set; } public bool IsCity { get; set; } = true; }
 public class SeoMetaRequest { public string PageType { get; set; } = ""; public int? RegionId { get; set; } public int? CityOrDistrictId { get; set; } public int? ObjectTypeId { get; set; } public string? Title { get; set; } public string? Description { get; set; } public string? H1 { get; set; } public string? Text { get; set; } }
 public class AmenityRequest { public string Name { get; set; } = ""; public string? Slug { get; set; } public string? Icon { get; set; } }
+
+public class ObjectTypeFieldRequest
+{
+    public string? Key { get; set; }
+    public string Label { get; set; } = "";
+    public string? FieldType { get; set; }
+    public string? Unit { get; set; }
+    public string? Placeholder { get; set; }
+    public string? HelpText { get; set; }
+    public string? Options { get; set; }
+    public decimal? MinValue { get; set; }
+    public decimal? MaxValue { get; set; }
+    public bool IsRequired { get; set; }
+    public int? SortOrder { get; set; }
+}

@@ -67,12 +67,18 @@ public class OwnerController : ControllerBase
             .Include(o => o.ObjectTags).ThenInclude(ot => ot.Tag)
             .Include(o => o.AvailabilityDates)
             .Include(o => o.SourceLink)
+            .Include(o => o.FieldValues)
             .Include(o => o.Owner).ThenInclude(u => u!.OwnerProfile)
             .FirstOrDefaultAsync();
 
         if (obj == null) return NotFound(new { error = "Объект не найден" });
 
-        return Ok(MapObjectFull(obj));
+        var fieldSchema = await _db.ObjectTypeFields
+            .Where(f => f.ObjectTypeId == obj.ObjectTypeId)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id)
+            .ToListAsync();
+
+        return Ok(MapObjectFull(obj, fieldSchema));
     }
 
     // --- Create object (draft) ---
@@ -142,6 +148,8 @@ public class OwnerController : ControllerBase
                 SourceType = req.SourceType
             });
         }
+
+        await CustomFieldsService.ApplyAsync(_db, obj.Id, obj.ObjectTypeId, req.CustomFields);
 
         await _db.SaveChangesAsync();
         return Ok(new { id = obj.Id });
@@ -215,6 +223,8 @@ public class OwnerController : ControllerBase
         {
             _db.SourceLinks.Add(new SourceLink { ObjectId = id, SourceName = req.SourceName, SourceUrl = req.SourceUrl, SourceType = req.SourceType });
         }
+
+        await CustomFieldsService.ApplyAsync(_db, id, obj.ObjectTypeId, req.CustomFields);
 
         await _db.SaveChangesAsync();
         return Ok(new { id = obj.Id });
@@ -380,7 +390,7 @@ public class OwnerController : ControllerBase
     }
 
     // --- Helpers ---
-    private static object MapObjectFull(GlampingObject o) => new
+    private static object MapObjectFull(GlampingObject o, List<ObjectTypeField>? fieldSchema = null) => new
     {
         o.Id, o.Name, o.Slug, o.ShortDescription, o.FullDescription,
         o.Capacity, o.Beds, o.Rooms, o.IsWhole, o.Area,
@@ -408,7 +418,12 @@ public class OwnerController : ControllerBase
             o.Owner.OwnerProfile.ContactName,
             o.Owner.OwnerProfile.ContactPhone,
             o.Owner.OwnerProfile.ContactTelegram
-        } : null
+        } : null,
+        FieldSchema = (fieldSchema ?? new List<ObjectTypeField>()).Select(f => new {
+            f.Id, f.Key, f.Label, f.FieldType, f.Unit, f.Placeholder, f.HelpText, f.Options,
+            f.MinValue, f.MaxValue, f.IsRequired, f.SortOrder
+        }),
+        CustomFields = CustomFieldsService.Serialize(o.FieldValues, fieldSchema ?? new List<ObjectTypeField>())
     };
 }
 
@@ -447,6 +462,10 @@ public class ObjectSaveRequest
     public string? SourceType { get; set; }
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
+
+    // Dynamic per-type fields: { "<field_key>": value }.
+    // Value can be string, number, bool, or null.
+    public Dictionary<string, object?>? CustomFields { get; set; }
 }
 
 public class TariffRequest

@@ -7,4 +7,6 @@ export { BlockTariffs } from "./BlockTariffs";
 export { BlockCalendar } from "./BlockCalendar";
 export { BlockSource } from "./BlockSource";
 export { BlockSeo } from "./BlockSeo";
+export { BlockCustomFields } from "./BlockCustomFields";
+export type { TypeFieldSchema, CustomFieldsMap } from "./BlockCustomFields";
 export * from "./types";

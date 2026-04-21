@@ -173,10 +173,16 @@ public class ObjectsController : ControllerBase
             .Include(o => o.SourceLink)
             .Include(o => o.ObjectAmenities).ThenInclude(oa => oa.Amenity)
             .Include(o => o.AvailabilityDates)
+            .Include(o => o.FieldValues)
             .FirstOrDefaultAsync();
 
         if (obj == null)
             return NotFound(new { error = "Object not found" });
+
+        var fieldSchema = await _db.ObjectTypeFields
+            .Where(f => f.ObjectTypeId == obj.ObjectTypeId)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id)
+            .ToListAsync();
 
         return Ok(new
         {
@@ -218,7 +224,11 @@ public class ObjectsController : ControllerBase
                 : (double?)null,
             ReviewCount = obj.Reviews.Count(r => r.Status == ReviewStatus.Published),
             Source = obj.SourceLink != null ? new { obj.SourceLink.SourceName, obj.SourceLink.SourceUrl, obj.SourceLink.SourceType } : null,
-            Availability = obj.AvailabilityDates.Select(a => new { Date = a.Date.ToString("yyyy-MM-dd"), Status = a.Status.ToString() })
+            Availability = obj.AvailabilityDates.Select(a => new { Date = a.Date.ToString("yyyy-MM-dd"), Status = a.Status.ToString() }),
+            FieldSchema = fieldSchema.Select(f => new {
+                f.Key, f.Label, f.FieldType, f.Unit, f.Placeholder, f.HelpText, f.Options, f.SortOrder
+            }),
+            CustomFields = OnlyGlamps.Api.Services.CustomFieldsService.Serialize(obj.FieldValues, fieldSchema)
         });
     }
 

@@ -11,4 +11,5 @@ public class ObjectType
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<GlampingObject> Objects { get; set; } = [];
+    public ICollection<ObjectTypeField> Fields { get; set; } = [];
 }

@@ -25,6 +25,21 @@ public class CatalogController : ControllerBase
         return Ok(types);
     }
 
+    [HttpGet("types/{id:int}/fields")]
+    public async Task<IActionResult> GetTypeFields(int id)
+    {
+        var fields = await _db.ObjectTypeFields
+            .Where(f => f.ObjectTypeId == id)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id)
+            .Select(f => new {
+                f.Id, f.Key, f.Label, f.FieldType,
+                f.Unit, f.Placeholder, f.HelpText, f.Options,
+                f.MinValue, f.MaxValue, f.IsRequired, f.SortOrder
+            })
+            .ToListAsync();
+        return Ok(fields);
+    }
+
     [HttpGet("amenities")]
     public async Task<IActionResult> GetAmenities()
     {

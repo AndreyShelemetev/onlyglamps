@@ -26,6 +26,8 @@ public class AppDbContext : DbContext
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<ObjectTag> ObjectTags => Set<ObjectTag>();
     public DbSet<Article> Articles => Set<Article>();
+    public DbSet<ObjectTypeField> ObjectTypeFields => Set<ObjectTypeField>();
+    public DbSet<ObjectFieldValue> ObjectFieldValues => Set<ObjectFieldValue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -230,6 +232,36 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.Articles)
                 .HasForeignKey(a => a.AuthorId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ObjectTypeField (dynamic per-type parameter definitions)
+        modelBuilder.Entity<ObjectTypeField>(e =>
+        {
+            e.HasIndex(f => new { f.ObjectTypeId, f.Key }).IsUnique();
+            e.Property(f => f.MinValue).HasPrecision(14, 4);
+            e.Property(f => f.MaxValue).HasPrecision(14, 4);
+
+            e.HasOne(f => f.ObjectType)
+                .WithMany(t => t.Fields)
+                .HasForeignKey(f => f.ObjectTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ObjectFieldValue
+        modelBuilder.Entity<ObjectFieldValue>(e =>
+        {
+            e.HasIndex(v => new { v.ObjectId, v.FieldId }).IsUnique();
+            e.Property(v => v.ValueNumber).HasPrecision(14, 4);
+
+            e.HasOne(v => v.Object)
+                .WithMany(o => o.FieldValues)
+                .HasForeignKey(v => v.ObjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(v => v.Field)
+                .WithMany(f => f.Values)
+                .HasForeignKey(v => v.FieldId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -11,9 +11,10 @@ import {
 } from "@/lib/dashboard-api";
 import {
   BlockBasicInfo, BlockParams, BlockPhotos, BlockAmenities, BlockTags,
-  BlockTariffs, BlockCalendar, BlockSource, BlockSeo,
+  BlockTariffs, BlockCalendar, BlockSource, BlockSeo, BlockCustomFields,
   ObjectFormData, TariffItem, PhotoItem, CalendarItem,
   CatalogOption, RegionOption, INITIAL_FORM_DATA,
+  CustomFieldsMap, TypeFieldSchema,
 } from "@/components/editor";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -34,6 +35,9 @@ export default function AdminEditObjectPage() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [calendar, setCalendar] = useState<CalendarItem[]>([]);
   const [status, setStatus] = useState("Draft");
+  const [customFields, setCustomFields] = useState<CustomFieldsMap>({});
+  const [fieldSchema, setFieldSchema] = useState<TypeFieldSchema[] | null>(null);
+  const [initialTypeId, setInitialTypeId] = useState<number>(0);
 
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [cities, setCities] = useState<{ id: number; name: string; slug: string; regionId: number }[]>([]);
@@ -87,6 +91,9 @@ export default function AdminEditObjectPage() {
       setPhotos((obj.photos || []).map((p: any) => ({ id: p.id, url: p.url, alt: p.alt || "", sortOrder: p.sortOrder })));
       setCalendar((obj.availability || []).map((a: any) => ({ date: a.date, status: a.status })));
       setStatus(obj.status || "Draft");
+      setCustomFields(obj.customFields || {});
+      setFieldSchema(Array.isArray(obj.fieldSchema) ? obj.fieldSchema : null);
+      setInitialTypeId(obj.objectTypeId || 0);
       setLoading(false);
     }).catch(() => { setError("Ошибка загрузки"); setLoading(false); });
   }, [authLoading, token, user, objectId]);
@@ -107,7 +114,7 @@ export default function AdminEditObjectPage() {
     setError(""); setSuccess("");
     setSaving(true);
     try {
-      const res = await adminEditObject(token, objectId, formRef.current);
+      const res = await adminEditObject(token, objectId, { ...formRef.current, customFields });
       if (res.error) { setError(res.error); setSaving(false); return; }
       await Promise.all([
         adminSaveTariffs(token, objectId, tariffs),
@@ -129,7 +136,7 @@ export default function AdminEditObjectPage() {
     setError(""); setSuccess("");
     setSaving(true);
     try {
-      const res = await adminEditObject(token, objectId, formRef.current);
+      const res = await adminEditObject(token, objectId, { ...formRef.current, customFields });
       if (res.error) { setError(res.error); setSaving(false); return; }
       await Promise.all([
         adminSaveTariffs(token, objectId, tariffs),
@@ -174,6 +181,12 @@ export default function AdminEditObjectPage() {
 
       <BlockBasicInfo data={formData} onChange={updateForm} regions={regions} types={types} cities={cities} />
       <BlockParams data={formData} onChange={updateForm} />
+      <BlockCustomFields
+        objectTypeId={formData.objectTypeId}
+        values={customFields}
+        onChange={(v) => { setCustomFields(v); setDirty(true); }}
+        schema={formData.objectTypeId === initialTypeId ? fieldSchema : null}
+      />
       <BlockPhotos photos={photos} onChange={(p) => { setPhotos(p); setDirty(true); }} />
       <BlockAmenities selectedIds={formData.amenityIds} onChange={(ids) => updateForm({ amenityIds: ids })} amenities={amenities} />
       <BlockTags selectedIds={formData.tagIds} onChange={(ids) => updateForm({ tagIds: ids })} tags={tags} />

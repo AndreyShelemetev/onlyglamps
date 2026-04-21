@@ -104,10 +104,16 @@ export default function AdminTypesPage() {
                 <span className="text-gray-400">/{t.slug}/</span>
                 <span className="text-gray-400">{t.objectCount} объектов</span>
               </div>
-              <button
-                onClick={() => { setEditing(t); setName(t.name); setIcon(t.icon || ""); setColorFrom(t.colorFrom || "#10b981"); setColorTo(t.colorTo || "#047857"); }}
-                className="text-xs text-primary-600 hover:text-primary-700"
-              >Изменить</button>
+              <div className="flex items-center gap-3">
+                <a
+                  href={`/dashboard/admin/types/${t.id}/fields/`}
+                  className="text-xs text-gray-500 hover:text-primary-600"
+                >Поля</a>
+                <button
+                  onClick={() => { setEditing(t); setName(t.name); setIcon(t.icon || ""); setColorFrom(t.colorFrom || "#10b981"); setColorTo(t.colorTo || "#047857"); }}
+                  className="text-xs text-primary-600 hover:text-primary-700"
+                >Изменить</button>
+              </div>
             </div>
           ))}
         </div>

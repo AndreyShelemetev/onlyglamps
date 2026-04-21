@@ -11,9 +11,10 @@ import {
 } from "@/lib/dashboard-api";
 import {
   BlockBasicInfo, BlockParams, BlockPhotos, BlockAmenities, BlockTags,
-  BlockTariffs, BlockCalendar, BlockSource, BlockSeo,
+  BlockTariffs, BlockCalendar, BlockSource, BlockSeo, BlockCustomFields,
   ObjectFormData, TariffItem, PhotoItem, CalendarItem,
   CatalogOption, RegionOption, INITIAL_FORM_DATA,
+  CustomFieldsMap, TypeFieldSchema,
 } from "@/components/editor";
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -35,6 +36,9 @@ export default function EditObjectPage() {
   const [calendar, setCalendar] = useState<CalendarItem[]>([]);
   const [status, setStatus] = useState("Draft");
   const [moderationComment, setModerationComment] = useState<string | null>(null);
+  const [customFields, setCustomFields] = useState<CustomFieldsMap>({});
+  const [fieldSchema, setFieldSchema] = useState<TypeFieldSchema[] | null>(null);
+  const [initialTypeId, setInitialTypeId] = useState<number>(0);
 
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [cities, setCities] = useState<{ id: number; name: string; slug: string; regionId: number }[]>([]);
@@ -127,6 +131,9 @@ export default function EditObjectPage() {
       })));
       setStatus(obj.status || "Draft");
       setModerationComment(obj.moderationComment || null);
+      setCustomFields(obj.customFields || {});
+      setFieldSchema(Array.isArray(obj.fieldSchema) ? obj.fieldSchema : null);
+      setInitialTypeId(obj.objectTypeId || 0);
       setLoading(false);
     }).catch(() => {
       setError("Ошибка загрузки данных");
@@ -154,7 +161,7 @@ export default function EditObjectPage() {
     setSaving(true);
 
     try {
-      const res = await ownerUpdateObject(token, objectId, formRef.current);
+      const res = await ownerUpdateObject(token, objectId, { ...formRef.current, customFields });
       if (res.error) { setError(res.error); setSaving(false); return; }
 
       await Promise.all([
@@ -249,6 +256,12 @@ export default function EditObjectPage() {
 
       <BlockBasicInfo data={formData} onChange={updateForm} regions={regions} types={types} cities={cities} />
       <BlockParams data={formData} onChange={updateForm} />
+      <BlockCustomFields
+        objectTypeId={formData.objectTypeId}
+        values={customFields}
+        onChange={(v) => { setCustomFields(v); setDirty(true); }}
+        schema={formData.objectTypeId === initialTypeId ? fieldSchema : null}
+      />
       <BlockPhotos photos={photos} onChange={(p) => { setPhotos(p); setDirty(true); }} />
       <BlockAmenities selectedIds={formData.amenityIds} onChange={(ids) => updateForm({ amenityIds: ids })} amenities={amenities} />
       <BlockTags selectedIds={formData.tagIds} onChange={(ids) => updateForm({ tagIds: ids })} tags={tags} />

@@ -69,6 +69,42 @@ app.MapControllers();
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
+
+    // Idempotent schema upgrade for dynamic object-type fields (works on existing DBs,
+    // where EnsureCreated skips creation because the schema already exists).
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""ObjectTypeFields"" (
+            ""Id"" SERIAL PRIMARY KEY,
+            ""ObjectTypeId"" INTEGER NOT NULL REFERENCES ""ObjectTypes""(""Id"") ON DELETE CASCADE,
+            ""Key"" TEXT NOT NULL,
+            ""Label"" TEXT NOT NULL,
+            ""FieldType"" TEXT NOT NULL DEFAULT 'number',
+            ""Unit"" TEXT NULL,
+            ""Placeholder"" TEXT NULL,
+            ""HelpText"" TEXT NULL,
+            ""Options"" TEXT NULL,
+            ""MinValue"" NUMERIC(14,4) NULL,
+            ""MaxValue"" NUMERIC(14,4) NULL,
+            ""IsRequired"" BOOLEAN NOT NULL DEFAULT FALSE,
+            ""SortOrder"" INTEGER NOT NULL DEFAULT 0,
+            ""CreatedAt"" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            ""UpdatedAt"" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_ObjectTypeFields_ObjectTypeId_Key""
+            ON ""ObjectTypeFields"" (""ObjectTypeId"", ""Key"");
+
+        CREATE TABLE IF NOT EXISTS ""ObjectFieldValues"" (
+            ""Id"" SERIAL PRIMARY KEY,
+            ""ObjectId"" INTEGER NOT NULL REFERENCES ""GlampingObjects""(""Id"") ON DELETE CASCADE,
+            ""FieldId"" INTEGER NOT NULL REFERENCES ""ObjectTypeFields""(""Id"") ON DELETE CASCADE,
+            ""ValueText"" TEXT NULL,
+            ""ValueNumber"" NUMERIC(14,4) NULL,
+            ""ValueBool"" BOOLEAN NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_ObjectFieldValues_ObjectId_FieldId""
+            ON ""ObjectFieldValues"" (""ObjectId"", ""FieldId"");
+    ");
+
     await DataSeeder.SeedAsync(db);
 }
 

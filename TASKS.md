@@ -163,3 +163,14 @@
 - [ ] Ручная проверка SEO
 - [ ] Ручная проверка Docker
 - [ ] Финальный QA
+
+## Динамические параметры типов объектов ✅
+
+- [x] Сущности ObjectTypeField + ObjectFieldValue
+- [x] Idempotent CREATE TABLE IF NOT EXISTS для существующих БД
+- [x] Админ CRUD: GET/POST /api/admin/types/{id}/fields, PUT/DELETE /api/admin/fields/{id}
+- [x] Публичный GET /api/catalog/types/{id}/fields
+- [x] Сохранение значений в Create/Edit (admin + owner)
+- [x] Отдача fieldSchema + customFields в GET объекта (admin, owner, public)
+- [x] Страница админки /dashboard/admin/types/{id}/fields/
+- [x] BlockCustomFields в редакторе объекта (number, text, textarea, boolean, select)

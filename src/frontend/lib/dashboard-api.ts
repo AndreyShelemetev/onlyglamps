@@ -261,6 +261,33 @@ export async function adminUpdateSeoMeta(token: string, id: number, data: any) {
   return safeJson(res);
 }
 
+// Admin object-type dynamic fields (parameters)
+export async function adminGetTypeFields(token: string, typeId: number) {
+  const res = await authFetch(`/admin/types/${typeId}/fields`, token);
+  return safeJson(res);
+}
+
+export async function adminCreateTypeField(token: string, typeId: number, data: any) {
+  const res = await authFetch(`/admin/types/${typeId}/fields`, token, { method: "POST", body: JSON.stringify(data) });
+  return safeJson(res);
+}
+
+export async function adminUpdateTypeField(token: string, fieldId: number, data: any) {
+  const res = await authFetch(`/admin/fields/${fieldId}`, token, { method: "PUT", body: JSON.stringify(data) });
+  return safeJson(res);
+}
+
+export async function adminDeleteTypeField(token: string, fieldId: number) {
+  const res = await authFetch(`/admin/fields/${fieldId}`, token, { method: "DELETE" });
+  return safeJson(res);
+}
+
+// Public: dynamic fields schema for a type (used on object editor)
+export async function fetchTypeFields(typeId: number) {
+  const res = await fetch(`${API_BASE}/catalog/types/${typeId}/fields`);
+  return safeJson(res);
+}
+
 // Catalog lookups (public)
 export async function fetchCatalogAmenities() {
   const res = await fetch(`${API_BASE}/catalog/amenities`);

@@ -9,9 +9,10 @@ import {
 } from "@/lib/dashboard-api";
 import {
   BlockBasicInfo, BlockParams, BlockPhotos, BlockAmenities, BlockTags,
-  BlockTariffs, BlockCalendar, BlockSource, BlockSeo,
+  BlockTariffs, BlockCalendar, BlockSource, BlockSeo, BlockCustomFields,
   ObjectFormData, TariffItem, PhotoItem, CalendarItem,
   CatalogOption, RegionOption, INITIAL_FORM_DATA,
+  CustomFieldsMap,
 } from "@/components/editor";
 
 export default function NewObjectPage() {
@@ -20,6 +21,7 @@ export default function NewObjectPage() {
   const [tariffs, setTariffs] = useState<TariffItem[]>([]);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [calendar, setCalendar] = useState<CalendarItem[]>([]);
+  const [customFields, setCustomFields] = useState<CustomFieldsMap>({});
 
   const [regions, setRegions] = useState<RegionOption[]>([]);
   const [cities, setCities] = useState<{ id: number; name: string; slug: string; regionId: number }[]>([]);
@@ -85,13 +87,13 @@ export default function NewObjectPage() {
 
       if (!objId) {
         // Create
-        const res = await ownerCreateObject(token, formRef.current);
+        const res = await ownerCreateObject(token, { ...formRef.current, customFields });
         if (res.error) { setError(res.error); setSaving(false); return; }
         objId = res.id;
         setSavedId(objId);
       } else {
         // Update
-        const res = await ownerUpdateObject(token, objId, formRef.current);
+        const res = await ownerUpdateObject(token, objId, { ...formRef.current, customFields });
         if (res.error) { setError(res.error); setSaving(false); return; }
       }
 
@@ -147,6 +149,11 @@ export default function NewObjectPage() {
 
       <BlockBasicInfo data={formData} onChange={updateForm} regions={regions} types={types} cities={cities} />
       <BlockParams data={formData} onChange={updateForm} />
+      <BlockCustomFields
+        objectTypeId={formData.objectTypeId}
+        values={customFields}
+        onChange={(v) => { setCustomFields(v); setDirty(true); }}
+      />
       <BlockPhotos photos={photos} onChange={(p) => { setPhotos(p); setDirty(true); }} />
       <BlockAmenities selectedIds={formData.amenityIds} onChange={(ids) => updateForm({ amenityIds: ids })} amenities={amenities} />
       <BlockTags selectedIds={formData.tagIds} onChange={(ids) => updateForm({ tagIds: ids })} tags={tags} />

@@ -63,4 +63,5 @@ public class GlampingObject
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<ObjectPhoto> Photos { get; set; } = [];
     public ICollection<Inquiry> Inquiries { get; set; } = [];
+    public ICollection<ObjectFieldValue> FieldValues { get; set; } = [];
 }
