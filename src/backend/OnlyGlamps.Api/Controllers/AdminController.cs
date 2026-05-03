@@ -9,7 +9,7 @@ namespace OnlyGlamps.Api.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Editor")]
 public class AdminController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -18,6 +18,20 @@ public class AdminController : ControllerBase
     public AdminController(AppDbContext db, AuthService auth) { _db = db; _auth = auth; }
 
     private int GetUserId() => _auth.GetUserIdFromContext(HttpContext) ?? 0;
+
+    private bool IsEditor() => User.IsInRole("Editor") && !User.IsInRole("Admin");
+
+    // Editors can only modify objects they own. Returns ForbidResult-equivalent
+    // payload when an editor tries to touch someone else's object.
+    private async Task<bool> CanEditorModifyObject(int objectId)
+    {
+        if (!IsEditor()) return true;
+        var ownerId = await _db.GlampingObjects
+            .Where(o => o.Id == objectId)
+            .Select(o => (int?)o.OwnerId)
+            .FirstOrDefaultAsync();
+        return ownerId == GetUserId();
+    }
 
     // ===================== OBJECTS =====================
 
@@ -144,6 +158,7 @@ public class AdminController : ControllerBase
 
     // --- Moderation actions ---
     [HttpPost("objects/{id:int}/approve")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Approve(int id)
     {
         var obj = await _db.GlampingObjects.FindAsync(id);
@@ -158,6 +173,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("objects/{id:int}/reject")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Reject(int id, [FromBody] ModerationRequest req)
     {
         var obj = await _db.GlampingObjects.FindAsync(id);
@@ -174,6 +190,8 @@ public class AdminController : ControllerBase
     [HttpPost("objects/{id:int}/archive")]
     public async Task<IActionResult> Archive(int id)
     {
+        if (!await CanEditorModifyObject(id))
+            return Forbid();
         var obj = await _db.GlampingObjects.FindAsync(id);
         if (obj == null) return NotFound();
         obj.Status = ObjectStatus.Archived;
@@ -186,6 +204,8 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/seo")]
     public async Task<IActionResult> UpdateObjectSeo(int id, [FromBody] SeoRequest req)
     {
+        if (!await CanEditorModifyObject(id))
+            return Forbid();
         var obj = await _db.GlampingObjects.FindAsync(id);
         if (obj == null) return NotFound();
         obj.SeoTitle = req.Title;
@@ -616,6 +636,8 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/edit")]
     public async Task<IActionResult> EditObject(int id, [FromBody] ObjectSaveRequest req)
     {
+        if (!await CanEditorModifyObject(id))
+            return Forbid();
         var obj = await _db.GlampingObjects
             .Include(o => o.ObjectAmenities)
             .Include(o => o.ObjectTags)
@@ -683,6 +705,8 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/tariffs")]
     public async Task<IActionResult> SaveTariffs(int id, [FromBody] List<TariffRequest> tariffs)
     {
+        if (!await CanEditorModifyObject(id))
+            return Forbid();
         var obj = await _db.GlampingObjects.Include(o => o.Tariffs).FirstOrDefaultAsync(o => o.Id == id);
         if (obj == null) return NotFound();
         _db.Tariffs.RemoveRange(obj.Tariffs);
@@ -696,6 +720,8 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/photos")]
     public async Task<IActionResult> SavePhotos(int id, [FromBody] List<PhotoRequest> photos)
     {
+        if (!await CanEditorModifyObject(id))
+            return Forbid();
         var obj = await _db.GlampingObjects.Include(o => o.Photos).FirstOrDefaultAsync(o => o.Id == id);
         if (obj == null) return NotFound();
         _db.ObjectPhotos.RemoveRange(obj.Photos);
@@ -709,6 +735,8 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/calendar")]
     public async Task<IActionResult> SaveCalendar(int id, [FromBody] List<CalendarEntry> entries)
     {
+        if (!await CanEditorModifyObject(id))
+            return Forbid();
         var obj = await _db.GlampingObjects.Include(o => o.AvailabilityDates).FirstOrDefaultAsync(o => o.Id == id);
         if (obj == null) return NotFound();
         _db.AvailabilityCalendars.RemoveRange(obj.AvailabilityDates);
@@ -723,6 +751,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("objects/{id:int}/publish")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DirectPublish(int id)
     {
         var obj = await _db.GlampingObjects.FindAsync(id);
@@ -737,7 +766,7 @@ public class AdminController : ControllerBase
 
     // ===================== USERS (staff & owners) =====================
 
-    // Admin can create / list / edit accounts.
+    // Admin can create / list / edit accounts. Editor cannot manage users.
     // Allowed roles to assign via this UI: Owner (арендодатель), Editor (редактор), Author.
     // Admin role cannot be assigned through this endpoint.
     private static readonly HashSet<UserRole> AssignableRoles = new()
@@ -746,6 +775,7 @@ public class AdminController : ControllerBase
     };
 
     [HttpGet("users")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ListUsers([FromQuery] string? role = null, [FromQuery] string? search = null)
     {
         var query = _db.Users.AsQueryable();
@@ -784,6 +814,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("users")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
@@ -826,6 +857,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("users/{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest req)
     {
         var user = await _db.Users.FindAsync(id);
@@ -852,6 +884,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("users/{id:int}/password")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResetUserPassword(int id, [FromBody] ResetPasswordRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
@@ -869,6 +902,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpDelete("users/{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteUser(int id)
     {
         var user = await _db.Users.FindAsync(id);

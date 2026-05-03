@@ -44,7 +44,7 @@ export default function AdminObjectDetailPage() {
 
   useEffect(() => {
     if (authLoading || !token) return;
-    if (user?.role !== "Admin") { window.location.href = "/"; return; }
+    if ((user?.role !== "Admin" && user?.role !== "Editor")) { window.location.href = "/"; return; }
     loadObject();
   }, [authLoading, token, user, objectId]);
 

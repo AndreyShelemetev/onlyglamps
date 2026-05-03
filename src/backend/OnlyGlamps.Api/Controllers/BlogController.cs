@@ -100,7 +100,7 @@ public class BlogController : ControllerBase
     // ── Admin endpoints ──
 
     [HttpGet("admin/list")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     public async Task<IActionResult> AdminList()
     {
         var userId = _auth.GetUserIdFromContext(HttpContext);
@@ -131,7 +131,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpGet("admin/{id:int}")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     public async Task<IActionResult> AdminGet(int id)
     {
         var article = await _db.Articles
@@ -160,7 +160,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpPost("admin")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     public async Task<IActionResult> Create([FromBody] ArticleCreateDto dto)
     {
         var userId = _auth.GetUserIdFromContext(HttpContext);
@@ -193,7 +193,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpPut("admin/{id:int}")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     public async Task<IActionResult> Update(int id, [FromBody] ArticleCreateDto dto)
     {
         if (!Enum.TryParse<ArticleStatus>(dto.Status, out var status))
@@ -218,7 +218,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpDelete("admin/{id:int}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Editor")]
     public async Task<IActionResult> Delete(int id)
     {
         var article = await _db.Articles.FindAsync(id);
@@ -230,7 +230,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpPost("admin/upload")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<IActionResult> UploadImage(IFormFile file)
     {
@@ -249,7 +249,7 @@ public class BlogController : ControllerBase
     // ── Author profile ──
 
     [HttpGet("author/profile")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     public async Task<IActionResult> GetAuthorProfile()
     {
         var userId = _auth.GetUserIdFromContext(HttpContext);
@@ -269,7 +269,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpPut("author/profile")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     public async Task<IActionResult> UpdateAuthorProfile([FromBody] AuthorProfileUpdateDto dto)
     {
         var userId = _auth.GetUserIdFromContext(HttpContext);
@@ -289,7 +289,7 @@ public class BlogController : ControllerBase
     }
 
     [HttpPost("author/avatar")]
-    [Authorize(Roles = "Admin,Author")]
+    [Authorize(Roles = "Admin,Author,Editor")]
     [RequestSizeLimit(5 * 1024 * 1024)]
     public async Task<IActionResult> UploadAvatar(IFormFile file)
     {

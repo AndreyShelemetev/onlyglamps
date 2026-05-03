@@ -56,7 +56,7 @@ export default function AdminEditObjectPage() {
 
   useEffect(() => {
     if (authLoading || !token) return;
-    if (user?.role !== "Admin") { window.location.href = "/"; return; }
+    if ((user?.role !== "Admin" && user?.role !== "Editor")) { window.location.href = "/"; return; }
 
     const safe = (p: Promise<any>) => p.catch(() => null);
     Promise.all([

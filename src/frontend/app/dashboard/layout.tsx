@@ -32,6 +32,9 @@ const adminLinks: NavLink[] = [
   { href: "/dashboard/admin/seo/", label: "SEO", icon: "🔍" },
 ];
 
+// Editor sees the admin tools but not user management.
+const editorLinks: NavLink[] = adminLinks.filter(l => l.href !== "/dashboard/admin/users/");
+
 const authorLinks: NavLink[] = [
   { href: "/dashboard/admin/blog/", label: "Мои статьи", icon: "📝" },
   { href: "/dashboard/admin/blog/new/", label: "Создать статью", icon: "➕" },
@@ -48,7 +51,10 @@ function getSections(role: string): NavSection[] {
     case "Author":
       return [{ links: authorLinks }];
     case "Editor":
-      return [{ links: ownerLinks }];
+      return [
+        { title: "Свои объекты", links: ownerLinks },
+        { title: "Редактор", links: editorLinks },
+      ];
     default:
       return [{ links: ownerLinks }];
   }

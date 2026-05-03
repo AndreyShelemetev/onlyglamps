@@ -22,7 +22,7 @@ export default function AdminObjectsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token || user?.role !== "Admin") { window.location.href = "/"; return; }
+    if (!token || (user?.role !== "Admin" && user?.role !== "Editor")) { window.location.href = "/"; return; }
     loadObjects();
   }, [authLoading, token, user]);
 

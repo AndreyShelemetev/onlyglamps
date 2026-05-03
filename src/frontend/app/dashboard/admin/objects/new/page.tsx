@@ -41,7 +41,7 @@ export default function AdminNewObjectPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || user.role !== "Admin") { window.location.href = "/"; return; }
+    if (!user || (user.role !== "Admin" && user.role !== "Editor")) { window.location.href = "/"; return; }
     const safe = (p: Promise<any>) => p.catch(() => null);
     Promise.all([
       safe(fetchCatalogRegions()), safe(fetchCatalogCities()), safe(fetchCatalogTypes()),

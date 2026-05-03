@@ -26,7 +26,7 @@ export default function AdminRegionsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token || user?.role !== "Admin") { window.location.href = "/"; return; }
+    if (!token || (user?.role !== "Admin" && user?.role !== "Editor")) { window.location.href = "/"; return; }
     loadData();
   }, [authLoading, token, user]);
 
