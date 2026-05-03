@@ -1,12 +1,28 @@
 import { fetchArticles } from "@/lib/api";
 
 const BASE_URL = "https://onlyglamps.ru";
+const SITEMAP_PAGE_SIZE = 5000;
 
-export async function GET() {
-  const { data: articles } = await fetchArticles(1, 10000);
+function getPageFromRequest(request: Request): number {
+  const { searchParams } = new URL(request.url);
+  const raw = Number(searchParams.get("page") || "1");
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1;
+}
+
+export async function GET(request: Request) {
+  const page = getPageFromRequest(request);
+  const meta = await fetchArticles(1, 1);
+  const total = meta.total || 0;
+  const totalPages = Math.max(1, Math.ceil(total / SITEMAP_PAGE_SIZE));
+
+  if (page > totalPages) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const { data: articles } = await fetchArticles(page, SITEMAP_PAGE_SIZE);
 
   const urls: { loc: string; changefreq: string; priority: string }[] = [
-    { loc: `${BASE_URL}/blog/`, changefreq: "daily", priority: "0.6" },
+    ...(page === 1 ? [{ loc: `${BASE_URL}/blog/`, changefreq: "daily", priority: "0.6" }] : []),
   ];
 
   for (const article of articles) {

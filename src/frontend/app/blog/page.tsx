@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Путеводитель по глэмпингам и местам отдыха — OnlyGlamps",
   description:
     "Статьи, обзоры и путеводители по лучшим местам для загородного отдыха в России. Глэмпинги, гостевые дома, бани и достопримечательности.",
+  alternates: {
+    canonical: "https://onlyglamps.ru/blog/",
+  },
 };
 
 function ArticleCard({ article }: { article: ArticleListItem }) {

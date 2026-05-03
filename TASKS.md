@@ -1,5 +1,11 @@
 # Tasks — OnlyGlamps MVP
 
+## Выполнено 2026-05-03
+
+- [x] Canonical self URL для страниц статей `/blog/[slug]/`
+- [x] Механизм масштабируемого sitemap: пагинация `sitemap-objects.xml?page=N` и `sitemap-blog.xml?page=N` + автогенерация ссылок в `sitemap.xml`
+- [x] Единое поле координат в редакторе объекта с парсингом формата `55.938940, 48.196960`
+
 ## Этап 1. Базовый каркас ✅
 
 - [x] Поднять backend (ASP.NET Core 8)

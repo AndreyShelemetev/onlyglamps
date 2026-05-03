@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ObjectFormData, RegionOption, CatalogOption } from "./types";
 
 interface Props {
@@ -12,6 +13,47 @@ interface Props {
 
 export function BlockBasicInfo({ data, onChange, regions, types, cities }: Props) {
   const filteredCities = cities.filter((c) => c.regionId === data.regionId);
+  const [coordinatesInput, setCoordinatesInput] = useState("");
+  const [coordinatesError, setCoordinatesError] = useState("");
+
+  useEffect(() => {
+    if (data.latitude == null || data.longitude == null) {
+      setCoordinatesInput("");
+      return;
+    }
+    setCoordinatesInput(`${data.latitude}, ${data.longitude}`);
+  }, [data.latitude, data.longitude]);
+
+  function applyCoordinates(rawValue: string): boolean {
+    const normalized = rawValue.trim().replace(";", ",");
+    if (!normalized) {
+      onChange({ latitude: null, longitude: null });
+      setCoordinatesError("");
+      return true;
+    }
+
+    const parts = normalized.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length !== 2) {
+      setCoordinatesError("Введите координаты в формате: 55.938940, 48.196960");
+      return false;
+    }
+
+    const latitude = Number(parts[0]);
+    const longitude = Number(parts[1]);
+    const valid = Number.isFinite(latitude)
+      && Number.isFinite(longitude)
+      && latitude >= -90 && latitude <= 90
+      && longitude >= -180 && longitude <= 180;
+
+    if (!valid) {
+      setCoordinatesError("Проверьте диапазон: широта [-90..90], долгота [-180..180]");
+      return false;
+    }
+
+    onChange({ latitude, longitude });
+    setCoordinatesError("");
+    return true;
+  }
 
   return (
     <section className="bg-white border border-gray-200 rounded-xl p-5">
@@ -114,31 +156,32 @@ export function BlockBasicInfo({ data, onChange, regions, types, cities }: Props
         </div>
 
         {/* Координаты */}
-        <div>
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Широта <span className="text-red-500">*</span>
+            Координаты <span className="text-red-500">*</span>
           </label>
           <input
-            type="number"
-            step="any"
-            value={data.latitude ?? ""}
-            onChange={(e) => onChange({ latitude: e.target.value ? Number(e.target.value) : null })}
-            placeholder="56.6345"
+            type="text"
+            value={coordinatesInput}
+            onChange={(e) => {
+              setCoordinatesInput(e.target.value);
+              if (coordinatesError) setCoordinatesError("");
+            }}
+            onBlur={(e) => {
+              const ok = applyCoordinates(e.target.value);
+              if (ok && (data.latitude != null && data.longitude != null)) {
+                setCoordinatesInput(`${data.latitude}, ${data.longitude}`);
+              }
+            }}
+            placeholder="55.938940, 48.196960"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
           />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Долгота <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="any"
-            value={data.longitude ?? ""}
-            onChange={(e) => onChange({ longitude: e.target.value ? Number(e.target.value) : null })}
-            placeholder="47.8915"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-          />
+          <div className="text-xs text-gray-500 mt-1">
+            Вставьте из Яндекс Карты: широта, долгота (например: 55.938940, 48.196960)
+          </div>
+          {coordinatesError && (
+            <div className="text-xs text-red-600 mt-1">{coordinatesError}</div>
+          )}
         </div>
 
         {/* Краткое описание */}
