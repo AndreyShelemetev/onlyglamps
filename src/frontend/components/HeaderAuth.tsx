@@ -9,6 +9,7 @@ const roleLabels: Record<string, string> = {
   Owner: "Арендодатель",
   Admin: "Админ",
   Author: "Автор",
+  Editor: "Редактор",
 };
 
 interface MenuItem {
@@ -44,6 +45,11 @@ function getMenuSections(role: string): { items: MenuItem[]; title?: string }[] 
       return [
         { items: ownerMenuItems },
         { title: "Админка", items: adminMenuItems },
+      ];
+    case "Editor":
+      return [
+        { items: ownerMenuItems },
+        { title: "Редактор", items: adminMenuItems },
       ];
     case "Author":
       return [{ items: authorMenuItems }];

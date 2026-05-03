@@ -58,7 +58,7 @@ export default function NewObjectPage() {
 
   // Auth guard
   useEffect(() => {
-    if (!authLoading && (!user || (user.role !== "Owner" && user.role !== "Admin"))) {
+    if (!authLoading && (!user || (user.role !== "Owner" && user.role !== "Admin" && user.role !== "Editor"))) {
       window.location.href = "/";
     }
   }, [authLoading, user]);

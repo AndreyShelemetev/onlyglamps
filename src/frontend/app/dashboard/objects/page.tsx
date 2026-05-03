@@ -20,7 +20,7 @@ export default function OwnerObjectsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!token || (user?.role !== "Owner" && user?.role !== "Admin")) {
+    if (!token || (user?.role !== "Owner" && user?.role !== "Admin" && user?.role !== "Editor")) {
       window.location.href = "/";
       return;
     }

@@ -59,7 +59,7 @@ export default function EditObjectPage() {
   // Load catalogs + object data
   useEffect(() => {
     if (authLoading || !token) return;
-    if (!user || (user.role !== "Owner" && user.role !== "Admin")) {
+    if (!user || (user.role !== "Owner" && user.role !== "Admin" && user.role !== "Editor")) {
       window.location.href = "/";
       return;
     }
