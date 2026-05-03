@@ -5,7 +5,8 @@ public enum UserRole
     User = 0,
     Owner = 1,
     Admin = 2,
-    Author = 3
+    Author = 3,
+    Editor = 4
 }
 
 public enum ObjectStatus

@@ -24,6 +24,7 @@ const ownerLinks: NavLink[] = [
 const adminLinks: NavLink[] = [
   { href: "/dashboard/admin/objects/", label: "Все объекты", icon: "📋" },
   { href: "/dashboard/admin/objects/new/", label: "Создать объект", icon: "➕" },
+  { href: "/dashboard/admin/users/", label: "Пользователи", icon: "👥" },
   { href: "/dashboard/admin/regions/", label: "Регионы и города", icon: "🗺️" },
   { href: "/dashboard/admin/types/", label: "Типы объектов", icon: "🏷️" },
   { href: "/dashboard/admin/catalog/", label: "Теги и удобства", icon: "🧩" },
@@ -46,6 +47,8 @@ function getSections(role: string): NavSection[] {
       ];
     case "Author":
       return [{ links: authorLinks }];
+    case "Editor":
+      return [{ links: ownerLinks }];
     default:
       return [{ links: ownerLinks }];
   }

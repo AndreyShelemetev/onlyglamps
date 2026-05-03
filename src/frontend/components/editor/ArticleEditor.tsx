@@ -60,7 +60,7 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   const [views, setViews] = useState(initialData?.views ?? 0);
   const [readTime, setReadTime] = useState(initialData?.readTimeMinutes ?? 5);
   const [status, setStatus] = useState(initialData?.status || "Draft");
-  const [showPreview, setShowPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<"visual" | "html" | "preview">("visual");
   const [uploading, setUploading] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -104,9 +104,18 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
     }
   };
 
+  const switchMode = (mode: "visual" | "html" | "preview") => {
+    if (viewMode === "visual" && editorRef.current) {
+      setContent(editorRef.current.innerHTML);
+    }
+    setViewMode(mode);
+  };
+
   const handleSave = async () => {
-    syncContent();
-    const html = editorRef.current?.innerHTML || content;
+    const html = viewMode === "visual" && editorRef.current
+      ? editorRef.current.innerHTML
+      : content;
+    if (viewMode === "visual") setContent(html);
     await onSave({
       title,
       h1: h1 || title,
@@ -272,24 +281,54 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="block text-sm font-medium text-gray-700">Содержание статьи</label>
-          <button
-            type="button"
-            onClick={() => {
-              syncContent();
-              setShowPreview(!showPreview);
-            }}
-            className="text-xs text-primary-600 hover:underline"
-          >
-            {showPreview ? "Редактор" : "Предпросмотр"}
-          </button>
+          <div className="flex items-center gap-1 text-xs">
+            <button
+              type="button"
+              onClick={() => switchMode("visual")}
+              className={`px-2 py-1 rounded ${viewMode === "visual" ? "bg-primary-100 text-primary-700 font-medium" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Редактор
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("html")}
+              className={`px-2 py-1 rounded ${viewMode === "html" ? "bg-primary-100 text-primary-700 font-medium" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              HTML
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("preview")}
+              className={`px-2 py-1 rounded ${viewMode === "preview" ? "bg-primary-100 text-primary-700 font-medium" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Предпросмотр
+            </button>
+          </div>
         </div>
 
-        {showPreview ? (
+        {viewMode === "preview" && (
           <div
             className="border border-gray-300 rounded-lg p-4 min-h-[400px] prose prose-sm max-w-none bg-white"
             dangerouslySetInnerHTML={{ __html: content }}
           />
-        ) : (
+        )}
+
+        {viewMode === "html" && (
+          <div>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              spellCheck={false}
+              placeholder="<p>Вставьте HTML код статьи. Поддерживаются теги p, strong, em, h2, h3, ul, ol, li, a, img, blockquote, br...</p>"
+              className="w-full border border-gray-300 rounded-lg p-4 min-h-[400px] font-mono text-xs leading-relaxed focus:ring-2 focus:ring-primary-300 focus:border-primary-500 outline-none bg-gray-50"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              При переключении на «Редактор» HTML будет отрендерен — все теги (&lt;p&gt;, &lt;strong&gt;, &lt;h2&gt; и др.) применятся.
+            </p>
+          </div>
+        )}
+
+        {viewMode === "visual" && (
           <div>
             {/* Toolbar */}
             <div className="flex flex-wrap gap-1 border border-gray-300 border-b-0 rounded-t-lg p-2 bg-gray-50">
@@ -309,8 +348,10 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
               <button type="button" onClick={() => execCommand("removeFormat")} className="px-2 py-1 text-xs hover:bg-gray-200 rounded text-red-500" title="Очистить форматирование">✕</button>
             </div>
 
-            {/* Content editable area */}
+            {/* Content editable area. Re-keyed by content length so that
+                pasted HTML in the source-code mode is re-rendered as DOM. */}
             <div
+              key={`visual-${content.length}`}
               ref={editorRef}
               contentEditable
               onBlur={syncContent}

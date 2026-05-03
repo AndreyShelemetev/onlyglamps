@@ -10,7 +10,7 @@ namespace OnlyGlamps.Api.Controllers;
 
 [ApiController]
 [Route("api/owner")]
-[Authorize(Roles = "Owner,Admin")]
+[Authorize(Roles = "Owner,Admin,Editor")]
 public class OwnerController : ControllerBase
 {
     private readonly AppDbContext _db;

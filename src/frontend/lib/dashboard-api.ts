@@ -290,6 +290,40 @@ export async function adminUpdateBuiltinFields(token: string, typeId: number, di
   return safeJson(res);
 }
 
+// Admin user management
+export async function adminGetUsers(token: string, params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await authFetch(`/admin/users${qs ? `?${qs}` : ""}`, token);
+  return safeJson(res);
+}
+
+export async function adminCreateUser(token: string, data: {
+  email: string; password: string; firstName: string; lastName?: string; role: string;
+}) {
+  const res = await authFetch("/admin/users", token, { method: "POST", body: JSON.stringify(data) });
+  return safeJson(res);
+}
+
+export async function adminUpdateUser(token: string, id: number, data: {
+  firstName?: string; lastName?: string; role?: string;
+}) {
+  const res = await authFetch(`/admin/users/${id}`, token, { method: "PUT", body: JSON.stringify(data) });
+  return safeJson(res);
+}
+
+export async function adminResetUserPassword(token: string, id: number, password: string) {
+  const res = await authFetch(`/admin/users/${id}/password`, token, {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+  return safeJson(res);
+}
+
+export async function adminDeleteUser(token: string, id: number) {
+  const res = await authFetch(`/admin/users/${id}`, token, { method: "DELETE" });
+  return safeJson(res);
+}
+
 // Public: dynamic fields schema for a type (used on object editor)
 export async function fetchTypeFields(typeId: number) {
   const res = await fetch(`${API_BASE}/catalog/types/${typeId}/fields`);

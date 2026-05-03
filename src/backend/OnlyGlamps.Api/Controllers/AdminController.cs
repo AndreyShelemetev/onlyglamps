@@ -734,6 +734,155 @@ public class AdminController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(new { status = "published" });
     }
+
+    // ===================== USERS (staff & owners) =====================
+
+    // Admin can create / list / edit accounts.
+    // Allowed roles to assign via this UI: Owner (арендодатель), Editor (редактор), Author.
+    // Admin role cannot be assigned through this endpoint.
+    private static readonly HashSet<UserRole> AssignableRoles = new()
+    {
+        UserRole.Owner, UserRole.Editor, UserRole.Author, UserRole.User
+    };
+
+    [HttpGet("users")]
+    public async Task<IActionResult> ListUsers([FromQuery] string? role = null, [FromQuery] string? search = null)
+    {
+        var query = _db.Users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, true, out var r))
+            query = query.Where(u => u.Role == r);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            query = query.Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(s)) ||
+                u.FirstName.ToLower().Contains(s) ||
+                (u.LastName != null && u.LastName.ToLower().Contains(s)) ||
+                (u.Username != null && u.Username.ToLower().Contains(s)));
+        }
+
+        var users = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Select(u => new
+            {
+                u.Id,
+                u.Email,
+                u.Username,
+                u.FirstName,
+                u.LastName,
+                Role = u.Role.ToString(),
+                HasPassword = u.PasswordHash != null,
+                HasTelegram = u.TelegramId != null,
+                ObjectCount = u.Objects.Count,
+                u.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(users);
+    }
+
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
+            return BadRequest(new { error = "Email и пароль обязательны" });
+        if (string.IsNullOrWhiteSpace(req.FirstName))
+            return BadRequest(new { error = "Имя обязательно" });
+        if (req.Password.Length < 6)
+            return BadRequest(new { error = "Пароль должен быть не короче 6 символов" });
+
+        if (!Enum.TryParse<UserRole>(req.Role, true, out var role) || !AssignableRoles.Contains(role))
+            return BadRequest(new { error = "Недопустимая роль" });
+
+        var email = req.Email.Trim().ToLower();
+        if (await _db.Users.AnyAsync(u => u.Email == email))
+            return BadRequest(new { error = "Пользователь с таким email уже существует" });
+
+        var user = new User
+        {
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+            FirstName = req.FirstName.Trim(),
+            LastName = string.IsNullOrWhiteSpace(req.LastName) ? null : req.LastName.Trim(),
+            Role = role,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            AuthDate = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            user.Id,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            Role = user.Role.ToString()
+        });
+    }
+
+    [HttpPut("users/{id:int}")]
+    public async Task<IActionResult> UpdateUser(int id, [FromBody] UpdateUserRequest req)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        // Cannot demote/modify role of an Admin via this endpoint.
+        if (user.Role == UserRole.Admin)
+            return BadRequest(new { error = "Нельзя редактировать администратора через этот интерфейс" });
+
+        if (!string.IsNullOrWhiteSpace(req.FirstName)) user.FirstName = req.FirstName.Trim();
+        user.LastName = string.IsNullOrWhiteSpace(req.LastName) ? null : req.LastName!.Trim();
+
+        if (!string.IsNullOrWhiteSpace(req.Role))
+        {
+            if (!Enum.TryParse<UserRole>(req.Role, true, out var role) || !AssignableRoles.Contains(role))
+                return BadRequest(new { error = "Недопустимая роль" });
+            user.Role = role;
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { user.Id, user.Email, user.FirstName, user.LastName, Role = user.Role.ToString() });
+    }
+
+    [HttpPost("users/{id:int}/password")]
+    public async Task<IActionResult> ResetUserPassword(int id, [FromBody] ResetPasswordRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
+            return BadRequest(new { error = "Пароль должен быть не короче 6 символов" });
+
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+        if (user.Role == UserRole.Admin)
+            return BadRequest(new { error = "Нельзя менять пароль администратора через этот интерфейс" });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
+
+    [HttpDelete("users/{id:int}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+        if (user.Role == UserRole.Admin)
+            return BadRequest(new { error = "Нельзя удалить администратора" });
+
+        if (await _db.GlampingObjects.AnyAsync(o => o.OwnerId == id))
+            return BadRequest(new { error = "У пользователя есть объекты — удаление невозможно" });
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true });
+    }
 }
 
 // --- Request DTOs ---
@@ -762,4 +911,25 @@ public class ObjectTypeFieldRequest
 public class BuiltinFieldsRequest
 {
     public List<string>? DisabledKeys { get; set; }
+}
+
+public class CreateUserRequest
+{
+    public string Email { get; set; } = "";
+    public string Password { get; set; } = "";
+    public string FirstName { get; set; } = "";
+    public string? LastName { get; set; }
+    public string Role { get; set; } = "Owner";
+}
+
+public class UpdateUserRequest
+{
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Role { get; set; }
+}
+
+public class ResetPasswordRequest
+{
+    public string Password { get; set; } = "";
 }
