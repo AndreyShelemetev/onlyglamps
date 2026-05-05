@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { blogUploadImage } from "@/lib/dashboard-api";
 
@@ -98,19 +98,32 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   }
 
   function insertImageAtSavedPosition(url: string) {
-    if (!editorRef.current) return;
-    const restored = restoreSelection();
-    if (!restored) {
-      // Append at end as fallback
-      editorRef.current.focus();
-      const range = document.createRange();
-      range.selectNodeContents(editorRef.current);
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    let range: Range;
+    const saved = savedRangeRef.current;
+    if (saved && editor.contains(saved.startContainer)) {
+      range = saved.cloneRange();
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(editor);
       range.collapse(false);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
     }
-    document.execCommand("insertImage", false, url);
+
+    range.deleteContents();
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = "";
+    range.insertNode(img);
+
+    const after = document.createRange();
+    after.setStartAfter(img);
+    after.collapse(true);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(after);
+    savedRangeRef.current = after.cloneRange();
   }
 
   function handleEditorClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -132,8 +145,16 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   };
 
   const execCommand = useCallback((cmd: string, value?: string) => {
-    document.execCommand(cmd, false, value);
+    // Restore selection in case the toolbar button stole focus.
+    if (savedRangeRef.current && editorRef.current) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+      }
+    }
     editorRef.current?.focus();
+    document.execCommand(cmd, false, value);
   }, []);
 
   const insertH2 = () => {
@@ -165,6 +186,18 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
     }
     setViewMode(mode);
   };
+
+  // Seed contentEditable only on mode switch (or mount).
+  // Avoids React resetting innerHTML on every keystroke / image insert,
+  // which was killing the caret position.
+  useEffect(() => {
+    if (viewMode === "visual" && editorRef.current) {
+      if (editorRef.current.innerHTML !== content) {
+        editorRef.current.innerHTML = content;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode]);
 
   const handleSave = async () => {
     const html = viewMode === "visual" && editorRef.current
@@ -393,7 +426,16 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
         {viewMode === "visual" && (
           <div>
             {/* Toolbar */}
-            <div className="flex flex-wrap gap-1 border border-gray-300 border-b-0 rounded-t-lg p-2 bg-gray-50">
+            <div
+              className="flex flex-wrap gap-1 border border-gray-300 border-b-0 rounded-t-lg p-2 bg-gray-50"
+              onMouseDown={(e) => {
+                // Prevent toolbar buttons from stealing the caret/selection.
+                if ((e.target as HTMLElement).tagName === "BUTTON") {
+                  saveSelection();
+                  e.preventDefault();
+                }
+              }}
+            >
               <button type="button" onClick={() => execCommand("bold")} className="px-2 py-1 text-sm font-bold hover:bg-gray-200 rounded" title="Жирный">B</button>
               <button type="button" onClick={() => execCommand("italic")} className="px-2 py-1 text-sm italic hover:bg-gray-200 rounded" title="Курсив">I</button>
               <button type="button" onClick={() => execCommand("underline")} className="px-2 py-1 text-sm underline hover:bg-gray-200 rounded" title="Подчёркнутый">U</button>
@@ -447,15 +489,16 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
 
             {/* Content editable area. Re-keyed by content length so that
                 pasted HTML in the source-code mode is re-rendered as DOM. */}
+            {/* Content editable area. innerHTML is seeded by useEffect on mode
+                switch only, so React re-renders never reset cursor position. */}
             <div
-              key={`visual-${content.length}`}
               ref={editorRef}
               contentEditable
+              suppressContentEditableWarning
               onBlur={syncContent}
               onClick={handleEditorClick}
               onKeyUp={saveSelection}
               onMouseUp={saveSelection}
-              dangerouslySetInnerHTML={{ __html: content }}
               className="border border-gray-300 rounded-b-lg p-4 min-h-[400px] focus:ring-2 focus:ring-primary-300 focus:border-primary-500 outline-none prose prose-sm max-w-none bg-white"
             />
           </div>
