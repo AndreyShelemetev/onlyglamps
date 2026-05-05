@@ -65,6 +65,7 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   const editorRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const inlineImageInputRef = useRef<HTMLInputElement>(null);
+  const savedRangeRef = useRef<Range | null>(null);
   const { token } = useAuth();
 
   const MAX_IMAGE_BYTES = Math.floor(1.5 * 1024 * 1024); // 1.5 MB
@@ -74,6 +75,53 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
       return "Размер файла не должен превышать 1.5 МБ";
     }
     return null;
+  }
+
+  function saveSelection() {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+      savedRangeRef.current = range.cloneRange();
+    }
+  }
+
+  function restoreSelection(): boolean {
+    const range = savedRangeRef.current;
+    if (!range || !editorRef.current) return false;
+    editorRef.current.focus();
+    const sel = window.getSelection();
+    if (!sel) return false;
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }
+
+  function insertImageAtSavedPosition(url: string) {
+    if (!editorRef.current) return;
+    const restored = restoreSelection();
+    if (!restored) {
+      // Append at end as fallback
+      editorRef.current.focus();
+      const range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+    document.execCommand("insertImage", false, url);
+  }
+
+  function handleEditorClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement;
+    if (target && target.tagName === "IMG") {
+      const ok = window.confirm("Удалить это изображение?");
+      if (ok) {
+        target.remove();
+        syncContent();
+      }
+    }
   }
 
   const handleTitleChange = (val: string) => {
@@ -357,7 +405,13 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
               <button type="button" onClick={() => execCommand("insertOrderedList")} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Нум. список">1.</button>
               <span className="w-px bg-gray-300 mx-1" />
               <button type="button" onClick={insertLink} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Ссылка">🔗</button>
-              <button type="button" onClick={insertImage} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Изображение (≤ 1.5 МБ)">🖼</button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                onClick={insertImage}
+                className="px-2 py-1 text-sm hover:bg-gray-200 rounded"
+                title="Изображение (≤ 1.5 МБ)"
+              >🖼</button>
               <input
                 ref={inlineImageInputRef}
                 type="file"
@@ -376,7 +430,7 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
                   try {
                     const res = await blogUploadImage(token, file, slug);
                     if (res.url) {
-                      execCommand("insertImage", res.url);
+                      insertImageAtSavedPosition(res.url);
                       syncContent();
                     } else {
                       alert(res.error || "Ошибка загрузки");
@@ -398,6 +452,9 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
               ref={editorRef}
               contentEditable
               onBlur={syncContent}
+              onClick={handleEditorClick}
+              onKeyUp={saveSelection}
+              onMouseUp={saveSelection}
               dangerouslySetInnerHTML={{ __html: content }}
               className="border border-gray-300 rounded-b-lg p-4 min-h-[400px] focus:ring-2 focus:ring-primary-300 focus:border-primary-500 outline-none prose prose-sm max-w-none bg-white"
             />
