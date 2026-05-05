@@ -229,21 +229,37 @@ public class BlogController : ControllerBase
         return Ok();
     }
 
+    private const long MaxBlogImageSize = (long)(1.5 * 1024 * 1024); // 1.5 MB
+
     [HttpPost("admin/upload")]
     [Authorize(Roles = "Admin,Author,Editor")]
-    [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<IActionResult> UploadImage(IFormFile file)
+    [RequestSizeLimit(2 * 1024 * 1024)]
+    public async Task<IActionResult> UploadImage(IFormFile file, [FromQuery] string? slug = null)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { error = "Файл не выбран" });
+
+        if (file.Length > MaxBlogImageSize)
+            return BadRequest(new { error = "Размер файла не должен превышать 1.5 МБ" });
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedImageExtensions.Contains(ext))
             return BadRequest(new { error = "Разрешены только изображения: jpg, png, webp, gif" });
 
+        var folder = $"blog/{SanitizeSlugForFolder(slug)}";
+
         using var stream = file.OpenReadStream();
-        var url = await _storage.UploadFileAsync(stream, file.FileName, file.ContentType, "blog");
+        var url = await _storage.UploadFileAsync(stream, file.FileName, file.ContentType, folder);
         return Ok(new { url });
+    }
+
+    private static string SanitizeSlugForFolder(string? slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return "misc";
+        var lowered = slug.Trim().ToLowerInvariant();
+        var sanitized = new string(lowered.Where(c => (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-').ToArray());
+        sanitized = sanitized.Trim('-');
+        return string.IsNullOrEmpty(sanitized) ? "misc" : sanitized;
     }
 
     // ── Author profile ──

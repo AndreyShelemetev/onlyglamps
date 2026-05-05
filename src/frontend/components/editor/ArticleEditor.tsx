@@ -64,7 +64,17 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   const [uploading, setUploading] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const inlineImageInputRef = useRef<HTMLInputElement>(null);
   const { token } = useAuth();
+
+  const MAX_IMAGE_BYTES = Math.floor(1.5 * 1024 * 1024); // 1.5 MB
+
+  function validateImage(file: File): string | null {
+    if (file.size > MAX_IMAGE_BYTES) {
+      return "Размер файла не должен превышать 1.5 МБ";
+    }
+    return null;
+  }
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
@@ -85,10 +95,7 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
   };
 
   const insertImage = () => {
-    const url = prompt("URL изображения:");
-    if (url) {
-      execCommand("insertImage", url);
-    }
+    inlineImageInputRef.current?.click();
   };
 
   const insertLink = () => {
@@ -184,6 +191,7 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
       {/* Cover image upload */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Обложка статьи</label>
+        <p className="text-xs text-gray-500 mb-2">JPG / PNG / WebP / GIF, не более 1.5 МБ. Файлы сохраняются в папку статьи по slug.</p>
         <input
           ref={coverInputRef}
           type="file"
@@ -192,9 +200,15 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
           onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file || !token) return;
+            const sizeError = validateImage(file);
+            if (sizeError) {
+              alert(sizeError);
+              if (coverInputRef.current) coverInputRef.current.value = "";
+              return;
+            }
             setUploading(true);
             try {
-              const res = await blogUploadImage(token, file);
+              const res = await blogUploadImage(token, file, slug);
               if (res.url) {
                 setCoverImageUrl(res.url);
               } else {
@@ -343,7 +357,36 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
               <button type="button" onClick={() => execCommand("insertOrderedList")} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Нум. список">1.</button>
               <span className="w-px bg-gray-300 mx-1" />
               <button type="button" onClick={insertLink} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Ссылка">🔗</button>
-              <button type="button" onClick={insertImage} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Изображение">🖼</button>
+              <button type="button" onClick={insertImage} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Изображение (≤ 1.5 МБ)">🖼</button>
+              <input
+                ref={inlineImageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !token) return;
+                  const sizeError = validateImage(file);
+                  if (sizeError) {
+                    alert(sizeError);
+                    if (inlineImageInputRef.current) inlineImageInputRef.current.value = "";
+                    return;
+                  }
+                  setUploading(true);
+                  try {
+                    const res = await blogUploadImage(token, file, slug);
+                    if (res.url) {
+                      execCommand("insertImage", res.url);
+                      syncContent();
+                    } else {
+                      alert(res.error || "Ошибка загрузки");
+                    }
+                  } finally {
+                    setUploading(false);
+                    if (inlineImageInputRef.current) inlineImageInputRef.current.value = "";
+                  }
+                }}
+              />
               <span className="w-px bg-gray-300 mx-1" />
               <button type="button" onClick={() => execCommand("removeFormat")} className="px-2 py-1 text-xs hover:bg-gray-200 rounded text-red-500" title="Очистить форматирование">✕</button>
             </div>

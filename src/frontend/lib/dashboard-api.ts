@@ -403,10 +403,11 @@ export async function blogAdminDelete(token: string, id: number) {
   return safeJson(res);
 }
 
-export async function blogUploadImage(token: string, file: File) {
+export async function blogUploadImage(token: string, file: File, slug?: string) {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/blog/admin/upload`, {
+  const qs = slug ? `?slug=${encodeURIComponent(slug)}` : "";
+  const res = await fetch(`${API_BASE}/blog/admin/upload${qs}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
