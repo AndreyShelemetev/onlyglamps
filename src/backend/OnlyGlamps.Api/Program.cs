@@ -110,6 +110,7 @@ app.MapControllers();
     ");
 
     await DataSeeder.SeedAsync(db);
+    await DataSeeder.SeedRegionsExpandAsync(db);
 }
 
 app.Run();
