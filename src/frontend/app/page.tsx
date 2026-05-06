@@ -17,6 +17,21 @@ export default async function HomePage() {
     fetchObjectTypes(),
   ]);
 
+  // Якорный регион для "идей" — Московская область, либо первый из списка.
+  const anchorRegion =
+    regions.find((r) => r.slug === "moskovskaya-oblast" || /москов/i.test(r.name)) ||
+    regions[0] ||
+    null;
+
+  const intentIdeas: { label: string; emoji: string; param: string }[] = [
+    { label: "С горячим чаном", emoji: "♨️", param: "chan=1" },
+    { label: "С баней", emoji: "🧖", param: "sauna=1" },
+    { label: "У воды", emoji: "💧", param: "u-vody=1" },
+    { label: "В лесу", emoji: "🌲", param: "u-lesa=1" },
+    { label: "Можно с питомцами", emoji: "🐾", param: "s-pitomtsami=1" },
+    { label: "С мангалом", emoji: "🔥", param: "mangal=1" },
+  ];
+
   return (
     <div>
       {/* Hero with blurred background */}
@@ -33,7 +48,7 @@ export default async function HomePage() {
           <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl mx-auto">
             Найдите идеальное место для отдыха на природе
           </p>
-          <HeroSearch />
+          <HeroSearch regions={regions.map((r) => ({ name: r.name, slug: r.slug }))} />
         </div>
       </section>
 
@@ -79,8 +94,36 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Idea collections (intent-based, UX-only — links use GET filters → noindex by region page) */}
+      {anchorRegion && (
+        <section className="max-w-7xl mx-auto px-4 py-12">
+          <div className="flex items-baseline justify-between mb-6 flex-wrap gap-2">
+            <h2 className="text-2xl font-bold text-navy-900">Идеи для отдыха</h2>
+            <span className="text-sm text-navy-500">
+              в регионе {anchorRegion.name} · <a href="#regions" className="underline hover:text-primary-600">сменить регион</a>
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {intentIdeas.map((idea) => (
+              <a
+                key={idea.param}
+                href={`/${anchorRegion.slug}/?${idea.param}`}
+                className="group flex flex-col items-center justify-center text-center p-4 bg-white rounded-xl border border-navy-200 hover:shadow-md hover:border-primary-300 transition"
+              >
+                <span className="text-3xl mb-2" aria-hidden>
+                  {idea.emoji}
+                </span>
+                <span className="text-sm font-medium text-navy-900 group-hover:text-primary-700 transition">
+                  {idea.label}
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Regions */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
+      <section id="regions" className="max-w-7xl mx-auto px-4 py-12 scroll-mt-20">
         <h2 className="text-2xl font-bold text-navy-900 mb-6">Популярные направления</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {regions.map((r) => (

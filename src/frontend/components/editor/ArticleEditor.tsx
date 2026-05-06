@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { blogUploadImage } from "@/lib/dashboard-api";
+import ArticleFaqHydrator from "@/components/ArticleFaqHydrator";
 
 interface ArticleFormData {
   title: string;
@@ -172,6 +173,40 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
     if (url) {
       execCommand("createLink", url);
     }
+  };
+
+  const insertFaq = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const html = `
+<section class="article-faq">
+  <h2 class="article-faq__title">Ответы на вопросы</h2>
+  <div class="article-faq__list">
+    <div class="article-faq__item">
+      <button class="article-faq__question" type="button">Вопрос?</button>
+      <div class="article-faq__answer"><p>Ответ.</p></div>
+    </div>
+    <div class="article-faq__item">
+      <button class="article-faq__question" type="button">Ещё вопрос?</button>
+      <div class="article-faq__answer"><p>Ответ.</p></div>
+    </div>
+  </div>
+</section>
+<p><br></p>`;
+    let inserted = false;
+    if (savedRangeRef.current && editor.contains(savedRangeRef.current.startContainer)) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(savedRangeRef.current);
+        inserted = document.execCommand("insertHTML", false, html);
+      }
+    }
+    if (!inserted) {
+      editor.insertAdjacentHTML("beforeend", html);
+    }
+    syncContent();
   };
 
   const syncContent = () => {
@@ -402,10 +437,12 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
         </div>
 
         {viewMode === "preview" && (
-          <div
-            className="border border-gray-300 rounded-lg p-4 min-h-[400px] prose prose-sm max-w-none bg-white"
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
+          <ArticleFaqHydrator>
+            <div
+              className="border border-gray-300 rounded-lg p-4 min-h-[400px] prose prose-sm max-w-none bg-white"
+              dangerouslySetInnerHTML={{ __html: content }}
+            />
+          </ArticleFaqHydrator>
         )}
 
         {viewMode === "html" && (
@@ -447,6 +484,13 @@ export default function ArticleEditor({ initialData, onSave, saving }: ArticleEd
               <button type="button" onClick={() => execCommand("insertOrderedList")} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Нум. список">1.</button>
               <span className="w-px bg-gray-300 mx-1" />
               <button type="button" onClick={insertLink} className="px-2 py-1 text-sm hover:bg-gray-200 rounded" title="Ссылка">🔗</button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}
+                onClick={insertFaq}
+                className="px-2 py-1 text-xs hover:bg-gray-200 rounded font-medium"
+                title="Вставить блок FAQ"
+              >FAQ</button>
               <button
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}

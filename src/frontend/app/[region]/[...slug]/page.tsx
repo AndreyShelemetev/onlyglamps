@@ -109,6 +109,29 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
     if (!obj) notFound();
 
     const city = region.cities.find((c) => c.slug === parsed.citySlug);
+
+    // Nearby (same city, then same region) — exclude current object, max 4
+    const { data: cityNearby } = await fetchObjects({
+      region: params.region,
+      city: parsed.citySlug,
+      pageSize: "8",
+    });
+    let nearby = cityNearby.filter((o) => o.id !== obj.id).slice(0, 4);
+    if (nearby.length < 4) {
+      const { data: regionNearby } = await fetchObjects({
+        region: params.region,
+        pageSize: "12",
+      });
+      const seen = new Set(nearby.map((n) => n.id));
+      seen.add(obj.id);
+      for (const n of regionNearby) {
+        if (seen.has(n.id)) continue;
+        nearby.push(n);
+        seen.add(n.id);
+        if (nearby.length >= 4) break;
+      }
+    }
+
     return (
       <div className="max-w-7xl mx-auto px-4 py-6">
         <Breadcrumbs
@@ -119,7 +142,7 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
             { name: obj.name },
           ]}
         />
-        <ObjectDetailView obj={obj} />
+        <ObjectDetailView obj={obj} nearby={nearby} />
       </div>
     );
   }

@@ -100,6 +100,132 @@ export default async function RegionPage({ params, searchParams }: Props) {
           </div>
         </div>
       </div>
+
+      {/* SEO footer block — render only on the canonical (non-filtered) page */}
+      {!hasFilters && (
+        <RegionSeoFooter
+          regionName={region.name}
+          regionSlug={region.slug}
+          types={types}
+          cities={region.cities}
+          total={total}
+        />
+      )}
     </div>
+  );
+}
+
+/* ---------- SEO footer ---------- */
+
+const intentChips: { label: string; emoji: string; param: string }[] = [
+  { label: "С горячим чаном", emoji: "♨️", param: "chan=1" },
+  { label: "С баней", emoji: "🧖", param: "sauna=1" },
+  { label: "С мангалом", emoji: "🔥", param: "mangal=1" },
+  { label: "У воды", emoji: "💧", param: "u-vody=1" },
+  { label: "В лесу", emoji: "🌲", param: "u-lesa=1" },
+  { label: "Можно с питомцами", emoji: "🐾", param: "s-pitomtsami=1" },
+  { label: "Для детей", emoji: "🧸", param: "s-detmi=1" },
+  { label: "Wi-Fi", emoji: "📶", param: "wifi=1" },
+  { label: "Парковка", emoji: "🅿️", param: "parkovka=1" },
+];
+
+function RegionSeoFooter({
+  regionName,
+  regionSlug,
+  types,
+  cities,
+  total,
+}: {
+  regionName: string;
+  regionSlug: string;
+  types: { id: number; name: string; slug: string }[];
+  cities: { id: number; name: string; slug: string; isCity: boolean }[];
+  total: number;
+}) {
+  return (
+    <section className="mt-12 border-t border-gray-200 pt-10 pb-4 grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2">
+        <h2 className="text-xl md:text-2xl font-bold text-navy-900 mb-3">
+          Отдых в регионе {regionName}
+        </h2>
+        <div className="space-y-3 text-gray-700 leading-relaxed text-[15px]">
+          <p>
+            Каталог OnlyGlamps собрал {total > 0 ? `${total} ` : ""}
+            проверенных вариантов размещения в регионе {regionName}: глэмпинги, гостевые
+            дома, бани и базы отдыха. Для каждого объекта — фото, цены, удобства, точка
+            на карте и контакты владельца. Бронировать можно посуточно.
+          </p>
+          <p>
+            Используйте фильтры выше, чтобы быстро подобрать вариант под ваш сценарий
+            отдыха: с горячим чаном или баней, у воды, в лесу, с возможностью разместиться
+            с питомцами или большой компанией. Карточки показывают только живые
+            предложения с актуальной ценой и доступностью дат.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {/* Intents */}
+        <div>
+          <h3 className="text-sm font-semibold text-navy-900 uppercase tracking-wide mb-2">
+            Идеи для отдыха
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {intentChips.map((c) => (
+              <a
+                key={c.param}
+                href={`/${regionSlug}/?${c.param}`}
+                className="inline-flex items-center gap-1 text-sm bg-gray-50 hover:bg-primary-50 hover:text-primary-700 border border-gray-200 hover:border-primary-200 text-gray-700 px-3 py-1.5 rounded-full transition"
+              >
+                <span aria-hidden>{c.emoji}</span>
+                <span>{c.label}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Types */}
+        {types.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900 uppercase tracking-wide mb-2">
+              По типу размещения
+            </h3>
+            <ul className="grid grid-cols-2 gap-1.5 text-sm">
+              {types.map((t) => (
+                <li key={t.id}>
+                  <a
+                    href={`/${regionSlug}/${t.slug}/`}
+                    className="text-gray-700 hover:text-primary-700 hover:underline"
+                  >
+                    {t.name} в {regionName.replace(/ая$/, "ой").replace(/ий$/, "ом")}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Cities */}
+        {cities.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-navy-900 uppercase tracking-wide mb-2">
+              Города и районы
+            </h3>
+            <ul className="grid grid-cols-2 gap-1.5 text-sm">
+              {cities.slice(0, 12).map((c) => (
+                <li key={c.id}>
+                  <a
+                    href={`/${regionSlug}/${c.slug}/`}
+                    className="text-gray-700 hover:text-primary-700 hover:underline"
+                  >
+                    {c.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

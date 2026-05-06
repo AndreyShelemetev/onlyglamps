@@ -18,3 +18,93 @@ body {
 .hero-fallback {
   background: linear-gradient(135deg, #0f172a 0%, #1e3a2f 30%, #2d5a3f 60%, #1e293b 100%);
 }
+
+/* ===== Article FAQ accordion =====
+   HTML-структура (формируется в редакторе блогов):
+     <section class="article-faq">
+       <h2 class="article-faq__title">…</h2>
+       <div class="article-faq__list">
+         <div class="article-faq__item">
+           <button class="article-faq__question" type="button">…</button>
+           <div class="article-faq__answer"><p>…</p></div>
+         </div>
+       </div>
+     </section>
+   Раскрытие: клик по .article-faq__question переключает класс .is-open
+   на ближайшем .article-faq__item (см. ArticleFaqHydrator).
+   Если JS отключён или гидратор не подключён — ответы остаются
+   развернутыми (data-faq-static), чтобы контент был доступен
+   и индексировался. */
+.article-faq {
+  margin: 2rem 0;
+}
+.article-faq__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 1rem;
+}
+.article-faq__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: #fff;
+}
+.article-faq__item + .article-faq__item {
+  border-top: 1px solid #e5e7eb;
+}
+.article-faq__question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0.875rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+.article-faq__question::after {
+  content: "▾";
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+.article-faq__item.is-open > .article-faq__question::after {
+  transform: rotate(180deg);
+}
+.article-faq__question:hover {
+  background: #f8fafc;
+}
+.article-faq__answer {
+  padding: 0 1rem 1rem;
+  color: #334155;
+  line-height: 1.6;
+}
+.article-faq__answer > :first-child {
+  margin-top: 0;
+}
+.article-faq__answer > :last-child {
+  margin-bottom: 0;
+}
+
+/* Свернутое состояние — после гидрации (родитель помечается data-faq-hydrated) */
+[data-faq-hydrated] .article-faq__item:not(.is-open) > .article-faq__answer {
+  display: none;
+}
+
+/* В редакторе (contentEditable) — всегда показываем ответы, чтобы автор мог их редактировать */
+[contenteditable="true"] .article-faq__answer {
+  display: block !important;
+}
+[contenteditable="true"] .article-faq__question {
+  cursor: text;
+}
+

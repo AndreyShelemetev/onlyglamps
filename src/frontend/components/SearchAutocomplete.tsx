@@ -55,7 +55,11 @@ function pluralReviews(n: number): string {
   return `${n} отзывов`;
 }
 
-export function SearchAutocomplete() {
+export function SearchAutocomplete({
+  onQueryChange,
+}: {
+  onQueryChange?: (q: string) => void;
+} = {}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SuggestItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -87,6 +91,7 @@ export function SearchAutocomplete() {
 
   const handleChange = (value: string) => {
     setQuery(value);
+    onQueryChange?.(value);
     setActiveIndex(-1);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(value), 250);

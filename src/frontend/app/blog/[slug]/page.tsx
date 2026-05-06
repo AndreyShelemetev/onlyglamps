@@ -4,6 +4,7 @@ import Link from "next/link";
 import { fetchArticleBySlug } from "@/lib/api";
 import { SafeImage } from "@/components/SafeImage";
 import ArticleSidebar from "@/components/ArticleSidebar";
+import ArticleFaqHydrator from "@/components/ArticleFaqHydrator";
 
 interface Props {
   params: { slug: string };
@@ -130,15 +131,17 @@ export default async function ArticlePage({ params }: Props) {
           )}
 
           {/* Article body */}
-          <article
-            className="prose prose-lg max-w-none
-              prose-headings:text-navy-900 prose-headings:font-bold
-              prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
-              prose-p:text-gray-700 prose-p:leading-relaxed
-              prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
-              prose-img:rounded-xl prose-img:shadow-md"
-            dangerouslySetInnerHTML={{ __html: contentWithIds }}
-          />
+          <ArticleFaqHydrator>
+            <article
+              className="prose prose-lg max-w-none
+                prose-headings:text-navy-900 prose-headings:font-bold
+                prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
+                prose-p:text-gray-700 prose-p:leading-relaxed
+                prose-a:text-primary-600 prose-a:no-underline hover:prose-a:underline
+                prose-img:rounded-xl prose-img:shadow-md"
+              dangerouslySetInnerHTML={{ __html: contentWithIds }}
+            />
+          </ArticleFaqHydrator>
         </div>
       </div>
 

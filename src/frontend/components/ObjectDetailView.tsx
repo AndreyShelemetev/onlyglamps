@@ -1,9 +1,57 @@
-import { ObjectDetail } from "@/lib/api";
+import { ObjectDetail, ObjectListItem } from "@/lib/api";
 import { YandexMap } from "./YandexMap";
 import { SafeImage } from "./SafeImage";
 import { ImageSlider } from "./ImageSlider";
+import { ObjectCard } from "./ObjectCard";
 
-export function ObjectDetailView({ obj }: { obj: ObjectDetail }) {
+export function ObjectDetailView({
+  obj,
+  nearby = [],
+}: {
+  obj: ObjectDetail;
+  nearby?: ObjectListItem[];
+}) {
+  // FAQ items based on actual object data — drives both UI and FAQPage JSON-LD
+  const faq: { q: string; a: string }[] = [];
+  if (obj.checkInTime || obj.checkOutTime) {
+    faq.push({
+      q: "Когда заезд и выезд?",
+      a: `Заезд${obj.checkInTime ? ` с ${obj.checkInTime}` : " по согласованию"}, выезд${obj.checkOutTime ? ` до ${obj.checkOutTime}` : " по согласованию"}.`,
+    });
+  }
+  faq.push({
+    q: "Можно ли с детьми?",
+    a: obj.childrenAllowed ? "Да, объект подходит для отдыха с детьми." : "Размещение с детьми не предусмотрено — уточните у владельца.",
+  });
+  faq.push({
+    q: "Можно ли с питомцами?",
+    a: obj.petsAllowed ? "Да, можно с питомцами. Уточните условия у владельца." : "С питомцами нельзя.",
+  });
+  if (obj.deposit) {
+    faq.push({ q: "Нужен ли депозит?", a: `Да, ${obj.deposit}.` });
+  }
+  faq.push({
+    q: "Можно проводить мероприятия?",
+    a: obj.eventsAllowed ? "Да, мероприятия разрешены — обсудите с владельцем." : "Шумные мероприятия не разрешены.",
+  });
+  if (obj.capacity) {
+    faq.push({
+      q: "Сколько гостей можно разместить?",
+      a: `До ${obj.capacity} гостей${obj.beds ? `, спальных мест: ${obj.beds}` : ""}.`,
+    });
+  }
+
+  const mapsHref =
+    obj.latitude && obj.longitude
+      ? `https://yandex.ru/maps/?pt=${obj.longitude},${obj.latitude}&z=15&l=map`
+      : obj.address
+        ? `https://yandex.ru/maps/?text=${encodeURIComponent(obj.address)}`
+        : null;
+  const routeHref =
+    obj.latitude && obj.longitude
+      ? `https://yandex.ru/maps/?rtext=~${obj.latitude},${obj.longitude}&rtt=auto`
+      : null;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "VacationRental",
@@ -30,12 +78,31 @@ export function ObjectDetailView({ obj }: { obj: ObjectDetail }) {
       : {}),
   };
 
+  const faqJsonLd =
+    faq.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faq.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }
+      : null;
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main content */}
@@ -180,6 +247,64 @@ export function ObjectDetailView({ obj }: { obj: ObjectDetail }) {
             </div>
           )}
 
+          {/* How to get there */}
+          {(obj.address || (obj.latitude && obj.longitude)) && (
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-3">Как добраться</h2>
+              {obj.address && (
+                <p className="text-gray-700 mb-3">
+                  <span className="text-gray-500">Адрес:</span> {obj.address}
+                </p>
+              )}
+              <p className="text-sm text-gray-600 mb-3">
+                {obj.region?.name}
+                {obj.cityOrDistrict?.name ? `, ${obj.cityOrDistrict.name}` : ""}.
+                Точные координаты и схему проезда уточните у владельца — рекомендуем
+                заранее построить маршрут на автомобиле, особенно если едете в первый раз.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {mapsHref && (
+                  <a
+                    href={mapsHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 transition"
+                  >
+                    Открыть на Яндекс.Картах
+                  </a>
+                )}
+                {routeHref && (
+                  <a
+                    href={routeHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 transition"
+                  >
+                    Построить маршрут
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* FAQ */}
+          {faq.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-3">Частые вопросы</h2>
+              <div className="divide-y divide-gray-200 border border-gray-200 rounded-xl">
+                {faq.map((f, i) => (
+                  <details key={i} className="group p-4">
+                    <summary className="flex items-center justify-between cursor-pointer list-none font-medium text-gray-900">
+                      <span>{f.q}</span>
+                      <span className="ml-2 text-gray-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <p className="mt-2 text-sm text-gray-700">{f.a}</p>
+                  </details>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Reviews */}
           {obj.reviews && obj.reviews.length > 0 && (
             <div className="mb-6">
@@ -266,6 +391,20 @@ export function ObjectDetailView({ obj }: { obj: ObjectDetail }) {
           </div>
         </div>
       </div>
+
+      {/* Nearby */}
+      {nearby.length > 0 && (
+        <section className="mt-12 border-t border-gray-200 pt-8">
+          <h2 className="text-xl md:text-2xl font-bold text-navy-900 mb-4">
+            Похожие объекты рядом
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {nearby.map((n) => (
+              <ObjectCard key={n.id} obj={n} />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }
