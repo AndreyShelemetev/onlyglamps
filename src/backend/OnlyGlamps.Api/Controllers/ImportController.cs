@@ -134,12 +134,15 @@ public class ImportController : ControllerBase
         public int Offset { get; set; } = 0;
         public int Limit { get; set; } = 10;
         public bool DryRun { get; set; } = true;
+        public int? MaxPerRegion { get; set; }
+        public int? DelayMs { get; set; }
     }
 
     /// <summary>
     /// Запускает crawler глэмпинги.рф (sitemap → парсинг карточек → ImportService).
     /// Объекты создаются как Draft. По умолчанию dryRun=true (ничего не пишем).
-    /// Лимит карточек на запрос: 1..200. Между запросами 1.5 сек.
+    /// Лимит карточек на запрос: 1..2000. Можно ограничить выборку по регионам
+    /// (например, MaxPerRegion=3) и задать вежливую задержку DelayMs.
     /// </summary>
     [HttpPost("crawl/glampings-rf")]
     public async Task<IActionResult> CrawlGlampingsRf([FromBody] CrawlRequestDto? dto, CancellationToken ct)
@@ -149,8 +152,10 @@ public class ImportController : ControllerBase
         {
             var result = await _crawler.CrawlAsync(
                 offset: Math.Max(0, dto.Offset),
-                limit: Math.Clamp(dto.Limit, 1, 200),
+                limit: Math.Clamp(dto.Limit, 1, 2000),
                 dryRun: dto.DryRun,
+                maxPerRegion: dto.MaxPerRegion is > 0 ? dto.MaxPerRegion : null,
+                delayMs: Math.Clamp(dto.DelayMs ?? 1500, 1000, 15000),
                 ct);
             return Ok(new
             {

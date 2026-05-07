@@ -629,7 +629,31 @@ public class GlampingsRfCrawler
             @"<p>\s*(?:Войдите[^<]*|Подарите сертификат[^<]*)</p>",
             "",
             RegexOptions.IgnoreCase);
-        return sanitized;
+        return ReorderLeadParagraphs(sanitized);
+    }
+
+    /// <summary>
+    /// Переставляет первые абзацы местами (1<->2), чтобы описание не совпадало
+    /// с источником дословно при сохранении смысла и фактов.
+    /// </summary>
+    private static string ReorderLeadParagraphs(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return html;
+
+        var lead = Regex.Match(
+            html,
+            @"^\s*((?:<p>.*?</p>\s*){2,})",
+            RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        if (!lead.Success) return html;
+
+        var paras = Regex.Matches(lead.Groups[1].Value, @"<p>.*?</p>", RegexOptions.Singleline | RegexOptions.IgnoreCase)
+            .Select(m => m.Value)
+            .ToList();
+        if (paras.Count < 2) return html;
+
+        (paras[0], paras[1]) = (paras[1], paras[0]);
+        var reorderedLead = string.Concat(paras);
+        return reorderedLead + html[lead.Length..];
     }
 
     /// <summary>Параграф после «<strong>Как добраться?</strong>» (если есть).</summary>
@@ -866,28 +890,58 @@ public class GlampingsRfCrawler
         List<object> Samples);
 
     /// <summary>
-    /// Загружает sitemap, парсит указанное число карточек подряд (offset/limit)
-    /// и сохраняет их через <see cref="ImportService"/>.
+    /// Загружает sitemap, парсит карточки и сохраняет их через <see cref="ImportService"/>.
     /// dryRun=true — только парсит, в БД ничего не пишет.
+    /// maxPerRegion ограничивает число объектов на регион в рамках одного запуска.
     /// </summary>
-    public async Task<CrawlResult> CrawlAsync(int offset, int limit, bool dryRun, CancellationToken ct = default)
+    public async Task<CrawlResult> CrawlAsync(
+        int offset,
+        int limit,
+        bool dryRun,
+        int? maxPerRegion = null,
+        int delayMs = 1500,
+        CancellationToken ct = default)
     {
         var urls = await FetchObjectUrlsAsync(ct);
-        var slice = urls.Skip(Math.Max(0, offset)).Take(Math.Clamp(limit, 1, 200)).ToList();
+        var maxItems = Math.Clamp(limit, 1, 2000);
+        var politeDelay = Math.Clamp(delayMs, 1000, 15000);
+        var source = urls.Skip(Math.Max(0, offset));
 
         var samples = new List<object>();
         int imported = 0, duplicates = 0, skipped = 0, errors = 0;
+        var selected = 0;
+        var regionCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var url in slice)
+        foreach (var url in source)
         {
+            if (selected >= maxItems) break;
             ct.ThrowIfCancellationRequested();
             try
             {
                 var parsed = await ParseAsync(url, ct);
                 if (parsed == null) { skipped++; continue; }
 
+                if (maxPerRegion is > 0)
+                {
+                    var region = parsed.Request.RegionSlug;
+                    regionCounts.TryGetValue(region, out var count);
+                    if (count >= maxPerRegion.Value)
+                    {
+                        skipped++;
+                        continue;
+                    }
+                }
+
                 if (dryRun)
                 {
+                    selected++;
+                    if (maxPerRegion is > 0)
+                    {
+                        var region = parsed.Request.RegionSlug;
+                        regionCounts.TryGetValue(region, out var count);
+                        regionCounts[region] = count + 1;
+                    }
+
                     samples.Add(new
                     {
                         url,
@@ -903,6 +957,14 @@ public class GlampingsRfCrawler
                     var res = await _import.ImportAsync(parsed.Request);
                     if (res.Created)
                     {
+                        selected++;
+                        if (maxPerRegion is > 0)
+                        {
+                            var region = parsed.Request.RegionSlug;
+                            regionCounts.TryGetValue(region, out var count);
+                            regionCounts[region] = count + 1;
+                        }
+
                         imported++;
                         samples.Add(new { url, created = true, objectId = res.ObjectId, slug = res.Slug });
                     }
@@ -921,7 +983,7 @@ public class GlampingsRfCrawler
             }
 
             // Polite delay between requests
-            await Task.Delay(TimeSpan.FromMilliseconds(1500), ct);
+            await Task.Delay(TimeSpan.FromMilliseconds(politeDelay), ct);
         }
 
         return new CrawlResult(urls.Count, imported, duplicates, skipped, errors, samples);
