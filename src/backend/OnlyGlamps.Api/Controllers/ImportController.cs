@@ -15,8 +15,13 @@ namespace OnlyGlamps.Api.Controllers;
 public class ImportController : ControllerBase
 {
     private readonly ImportService _import;
+    private readonly GlampingsRfCrawler _crawler;
 
-    public ImportController(ImportService import) { _import = import; }
+    public ImportController(ImportService import, GlampingsRfCrawler crawler)
+    {
+        _import = import;
+        _crawler = crawler;
+    }
 
     public class ImportObjectDto
     {
@@ -121,6 +126,49 @@ public class ImportController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    public class CrawlRequestDto
+    {
+        public int Offset { get; set; } = 0;
+        public int Limit { get; set; } = 10;
+        public bool DryRun { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Запускает crawler глэмпинги.рф (sitemap → парсинг карточек → ImportService).
+    /// Объекты создаются как Draft. По умолчанию dryRun=true (ничего не пишем).
+    /// Лимит карточек на запрос: 1..200. Между запросами 1.5 сек.
+    /// </summary>
+    [HttpPost("crawl/glampings-rf")]
+    public async Task<IActionResult> CrawlGlampingsRf([FromBody] CrawlRequestDto? dto, CancellationToken ct)
+    {
+        dto ??= new CrawlRequestDto();
+        try
+        {
+            var result = await _crawler.CrawlAsync(
+                offset: Math.Max(0, dto.Offset),
+                limit: Math.Clamp(dto.Limit, 1, 200),
+                dryRun: dto.DryRun,
+                ct);
+            return Ok(new
+            {
+                found = result.Found,
+                imported = result.Imported,
+                duplicates = result.Duplicates,
+                skipped = result.Skipped,
+                errors = result.Errors,
+                samples = result.Samples,
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = "upstream fetch failed", detail = ex.Message });
+        }
+        catch (TaskCanceledException ex)
+        {
+            return StatusCode(504, new { error = "upstream timeout", detail = ex.Message });
         }
     }
 }

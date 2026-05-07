@@ -16,6 +16,10 @@ public class ImportService
 
     public ImportService(AppDbContext db) { _db = db; }
 
+    /// <summary>One amenity reference. If <see cref="Slug"/> already exists in DB, it's reused;
+    /// otherwise a new <see cref="Amenity"/> is created with this slug+name.</summary>
+    public record AmenityRef(string Slug, string Name);
+
     public record ImportRequest(
         string Name,
         string SourceUrl,
@@ -39,7 +43,10 @@ public class ImportService
         bool SmokingAllowed,
         bool EventsAllowed,
         IReadOnlyList<string>? AmenitySlugs,
-        decimal? PriceFrom);
+        decimal? PriceFrom,
+        IReadOnlyList<string>? PhotoUrls = null,
+        string? FullDescription = null,
+        IReadOnlyList<AmenityRef>? ExtraAmenities = null);
 
     public record ImportResult(bool Created, int ObjectId, string Slug, string? DuplicateReason);
 
@@ -173,6 +180,7 @@ public class ImportService
             Name = req.Name.Trim(),
             Slug = slug,
             ShortDescription = req.ShortDescription?.Trim(),
+            FullDescription = req.FullDescription?.Trim(),
             Capacity = req.Capacity,
             Beds = req.Beds,
             Rooms = req.Rooms,
@@ -194,7 +202,10 @@ public class ImportService
         _db.GlampingObjects.Add(obj);
         await _db.SaveChangesAsync();
 
-        // Amenities (only existing)
+        // Amenities: a) match by slug from canonical dictionary (existing only),
+        //            b) attach ExtraAmenities, auto-creating Amenity rows if missing.
+        var attachedAmenityIds = new HashSet<int>();
+
         if (req.AmenitySlugs != null && req.AmenitySlugs.Count > 0)
         {
             var slugs = req.AmenitySlugs
@@ -207,7 +218,42 @@ public class ImportService
                 .Select(a => a.Id)
                 .ToListAsync();
             foreach (var aid in amenityIds)
-                _db.ObjectAmenities.Add(new ObjectAmenity { ObjectId = obj.Id, AmenityId = aid });
+                if (attachedAmenityIds.Add(aid))
+                    _db.ObjectAmenities.Add(new ObjectAmenity { ObjectId = obj.Id, AmenityId = aid });
+        }
+
+        if (req.ExtraAmenities != null && req.ExtraAmenities.Count > 0)
+        {
+            // Dedup incoming refs by slug
+            var refs = req.ExtraAmenities
+                .Where(r => !string.IsNullOrWhiteSpace(r.Slug))
+                .GroupBy(r => r.Slug.Trim().ToLowerInvariant())
+                .Select(g => new AmenityRef(g.Key, g.First().Name?.Trim() ?? g.Key))
+                .ToList();
+
+            var refSlugs = refs.Select(r => r.Slug).ToList();
+            var existing = await _db.Amenities
+                .Where(a => refSlugs.Contains(a.Slug))
+                .ToDictionaryAsync(a => a.Slug, a => a.Id);
+
+            foreach (var r in refs)
+            {
+                if (!existing.TryGetValue(r.Slug, out var aid))
+                {
+                    var a = new Amenity
+                    {
+                        Slug = r.Slug,
+                        Name = string.IsNullOrWhiteSpace(r.Name) ? r.Slug : r.Name,
+                        CreatedAt = DateTime.UtcNow,
+                    };
+                    _db.Amenities.Add(a);
+                    await _db.SaveChangesAsync();
+                    aid = a.Id;
+                    existing[r.Slug] = aid;
+                }
+                if (attachedAmenityIds.Add(aid))
+                    _db.ObjectAmenities.Add(new ObjectAmenity { ObjectId = obj.Id, AmenityId = aid });
+            }
         }
 
         // "От" tariff
@@ -232,6 +278,31 @@ public class ImportService
             SourceType = "competitor",
             CreatedAt = DateTime.UtcNow,
         });
+
+        // Photos: store external URLs as-is. We are NOT downloading binaries
+        // — we only keep the public source URL so the operator can review the
+        // listing visually. After moderation/claim, owner uploads originals.
+        if (req.PhotoUrls != null && req.PhotoUrls.Count > 0)
+        {
+            var seen = new HashSet<string>();
+            var sort = 0;
+            foreach (var rawUrl in req.PhotoUrls)
+            {
+                if (string.IsNullOrWhiteSpace(rawUrl)) continue;
+                var url = rawUrl.Trim();
+                if (!seen.Add(url)) continue;
+                if (!Uri.TryCreate(url, UriKind.Absolute, out _)) continue;
+                _db.ObjectPhotos.Add(new ObjectPhoto
+                {
+                    ObjectId = obj.Id,
+                    Url = url,
+                    Alt = obj.Name,
+                    SortOrder = sort++,
+                    CreatedAt = DateTime.UtcNow,
+                });
+                if (sort >= 20) break; // safety cap
+            }
+        }
 
         await _db.SaveChangesAsync();
 

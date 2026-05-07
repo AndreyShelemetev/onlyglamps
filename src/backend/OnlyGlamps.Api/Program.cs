@@ -21,6 +21,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<StorageService>();
 builder.Services.AddScoped<ImportService>();
+builder.Services.AddHttpClient<GlampingsRfCrawler>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "onlyglamps-dev-jwt-secret-key-min-32-chars!!";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -110,7 +111,6 @@ app.MapControllers();
     ");
 
     await DataSeeder.SeedAsync(db);
-    await DataSeeder.SeedRegionsExpandAsync(db);
 }
 
 app.Run();
