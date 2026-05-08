@@ -113,6 +113,14 @@ export async function adminArchiveObject(token: string, id: number) {
   return safeJson(res);
 }
 
+export async function adminBulkUpdateObjectStatus(token: string, objectIds: number[], status: "Draft" | "Published" | "Archived") {
+  const res = await authFetch(`/admin/objects/bulk-status`, token, {
+    method: "POST",
+    body: JSON.stringify({ objectIds, status }),
+  });
+  return safeJson(res);
+}
+
 export async function adminUpdateSeo(token: string, id: number, data: any) {
   const res = await authFetch(`/admin/objects/${id}/seo`, token, { method: "PUT", body: JSON.stringify(data) });
   return safeJson(res);

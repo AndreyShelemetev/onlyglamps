@@ -200,6 +200,60 @@ public class AdminController : ControllerBase
         return Ok(new { status = "archived" });
     }
 
+    [HttpPost("objects/bulk-status")]
+    public async Task<IActionResult> BulkUpdateStatus([FromBody] BulkStatusRequest req)
+    {
+        if (req.ObjectIds == null || req.ObjectIds.Count == 0)
+            return BadRequest(new { error = "Список объектов пуст" });
+
+        if (!Enum.TryParse<ObjectStatus>(req.Status, true, out var targetStatus) ||
+            (targetStatus != ObjectStatus.Draft && targetStatus != ObjectStatus.Published && targetStatus != ObjectStatus.Archived))
+            return BadRequest(new { error = "Разрешены только статусы Draft, Published, Archived" });
+
+        var ids = req.ObjectIds.Distinct().ToList();
+        var query = _db.GlampingObjects.Where(o => ids.Contains(o.Id));
+
+        if (IsEditor())
+        {
+            var userId = GetUserId();
+            query = query.Where(o => o.OwnerId == userId);
+        }
+
+        var now = DateTime.UtcNow;
+        var objects = await query.ToListAsync();
+        if (objects.Count == 0)
+            return NotFound(new { error = "Объекты не найдены" });
+
+        foreach (var obj in objects)
+        {
+            obj.Status = targetStatus;
+            obj.UpdatedAt = now;
+
+            if (targetStatus == ObjectStatus.Published)
+            {
+                obj.ModeratedAt = now;
+                obj.ModeratedById = GetUserId();
+                obj.ModerationComment = null;
+            }
+
+            if (targetStatus == ObjectStatus.Draft)
+            {
+                obj.ModeratedAt = null;
+                obj.ModeratedById = null;
+                obj.ModerationComment = null;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new
+        {
+            updated = objects.Count,
+            requested = ids.Count,
+            skipped = ids.Count - objects.Count,
+            status = targetStatus.ToString()
+        });
+    }
+
     // --- Admin can edit SEO for any object ---
     [HttpPut("objects/{id:int}/seo")]
     public async Task<IActionResult> UpdateObjectSeo(int id, [FromBody] SeoRequest req)
@@ -966,4 +1020,10 @@ public class UpdateUserRequest
 public class ResetPasswordRequest
 {
     public string Password { get; set; } = "";
+}
+
+public class BulkStatusRequest
+{
+    public List<int> ObjectIds { get; set; } = new();
+    public string Status { get; set; } = "";
 }
