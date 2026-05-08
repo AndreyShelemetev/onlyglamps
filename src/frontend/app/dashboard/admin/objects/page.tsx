@@ -18,18 +18,25 @@ export default function AdminObjectsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ status: "", type: "", region: "", page: "1" });
+  const [filters, setFilters] = useState({ status: "", type: "", region: "" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
     if (authLoading) return;
     if (!token || (user?.role !== "Admin" && user?.role !== "Editor")) { window.location.href = "/"; return; }
     loadObjects();
-  }, [authLoading, token, user]);
+  }, [authLoading, token, user, filters, page, pageSize]);
 
   async function loadObjects(overrideFilters?: Record<string, string>) {
     try {
       setLoading(true);
-      const params = overrideFilters || Object.fromEntries(Object.entries(filters).filter(([_, v]) => v));
+      const baseParams = overrideFilters || Object.fromEntries(Object.entries(filters).filter(([_, v]) => v));
+      const params = {
+        ...baseParams,
+        page: String(page),
+        pageSize: String(pageSize),
+      };
       const data = await adminGetObjects(token!, params);
       setObjects(data.data || []);
       setTotal(data.total || 0);
@@ -37,10 +44,9 @@ export default function AdminObjectsPage() {
   }
 
   function applyFilter(key: string, value: string) {
-    const next = { ...filters, [key]: value, page: "1" };
+    const next = { ...filters, [key]: value };
     setFilters(next);
-    const params = Object.fromEntries(Object.entries(next).filter(([_, v]) => v));
-    loadObjects(params);
+    setPage(1);
   }
 
   async function handleApprove(id: number) {
@@ -61,6 +67,12 @@ export default function AdminObjectsPage() {
     await adminArchiveObject(token!, id);
     loadObjects();
   }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const startItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endItem = Math.min(total, page * pageSize);
+  const pageWindowStart = Math.max(1, page - 2);
+  const pageWindowEnd = Math.min(totalPages, page + 2);
 
   if (authLoading || loading) {
     return (
@@ -102,69 +114,127 @@ export default function AdminObjectsPage() {
             <option key={k} value={k}>{v.label}</option>
           ))}
         </select>
+
+        <select
+          value={String(pageSize)}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+        >
+          <option value="10">10 на странице</option>
+          <option value="20">20 на странице</option>
+          <option value="50">50 на странице</option>
+          <option value="100">100 на странице</option>
+        </select>
       </div>
 
       {/* Table */}
       {objects.length === 0 ? (
         <div className="text-center py-12 text-gray-400">Нет объектов</div>
       ) : (
-        <div className="space-y-3">
-          {objects.map((obj: any) => {
-            const s = STATUS_MAP[obj.status] || STATUS_MAP.Draft;
-            return (
-              <div key={obj.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-sm transition">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 truncate">{obj.name || "Без названия"}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.color}`}>{s.label}</span>
+        <>
+          <div className="space-y-3">
+            {objects.map((obj: any) => {
+              const s = STATUS_MAP[obj.status] || STATUS_MAP.Draft;
+              return (
+                <div key={obj.id} className="border border-gray-200 rounded-xl p-4 bg-white hover:shadow-sm transition">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900 truncate">{obj.name || "Без названия"}</h3>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.color}`}>{s.label}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
+                        <span>{obj.objectType}</span>
+                        <span>{obj.region}, {obj.cityOrDistrict}</span>
+                        <span>Владелец: {obj.owner?.firstName} {obj.owner?.lastName}</span>
+                        <span>Фото: {obj.photoCount}</span>
+                        <span>Обновлён: {new Date(obj.updatedAt).toLocaleDateString("ru")}</span>
+                      </div>
+                      {obj.moderationComment && (
+                        <div className="mt-1 text-xs text-red-600">Комментарий: {obj.moderationComment}</div>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
-                      <span>{obj.objectType}</span>
-                      <span>{obj.region}, {obj.cityOrDistrict}</span>
-                      <span>Владелец: {obj.owner?.firstName} {obj.owner?.lastName}</span>
-                      <span>Фото: {obj.photoCount}</span>
-                      <span>Обновлён: {new Date(obj.updatedAt).toLocaleDateString("ru")}</span>
-                    </div>
-                    {obj.moderationComment && (
-                      <div className="mt-1 text-xs text-red-600">Комментарий: {obj.moderationComment}</div>
-                    )}
-                  </div>
 
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <a
-                      href={`/dashboard/admin/objects/${obj.id}/`}
-                      className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Открыть
-                    </a>
-                    <a
-                      href={`/dashboard/admin/objects/${obj.id}/edit/`}
-                      className="text-sm px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition"
-                    >
-                      Редактировать
-                    </a>
-                    {obj.status === "OnModeration" && (
-                      <>
-                        <button onClick={() => handleApprove(obj.id)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                          Принять
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <a
+                        href={`/dashboard/admin/objects/${obj.id}/`}
+                        className="text-sm px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        Открыть
+                      </a>
+                      <a
+                        href={`/dashboard/admin/objects/${obj.id}/edit/`}
+                        className="text-sm px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition"
+                      >
+                        Редактировать
+                      </a>
+                      {obj.status === "OnModeration" && (
+                        <>
+                          <button onClick={() => handleApprove(obj.id)} className="text-sm px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            Принять
+                          </button>
+                          <button onClick={() => handleReject(obj.id)} className="text-sm px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                            Отклонить
+                          </button>
+                        </>
+                      )}
+                      {obj.status !== "Archived" && (
+                        <button onClick={() => handleArchive(obj.id)} className="text-sm px-3 py-1.5 text-gray-500 hover:text-red-600 transition" title="Архивировать">
+                          🗄️
                         </button>
-                        <button onClick={() => handleReject(obj.id)} className="text-sm px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
-                          Отклонить
-                        </button>
-                      </>
-                    )}
-                    {obj.status !== "Archived" && (
-                      <button onClick={() => handleArchive(obj.id)} className="text-sm px-3 py-1.5 text-gray-500 hover:text-red-600 transition" title="Архивировать">
-                        🗄️
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="text-sm text-gray-500">
+              Показаны {startItem}-{endItem} из {total}
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Назад
+              </button>
+
+              {Array.from({ length: pageWindowEnd - pageWindowStart + 1 }, (_, i) => pageWindowStart + i).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPage(p)}
+                  className={
+                    "px-3 py-1.5 text-sm border rounded-lg " +
+                    (p === page
+                      ? "border-primary-600 bg-primary-50 text-primary-700"
+                      : "border-gray-300 hover:bg-gray-50")
+                  }
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Вперёд
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
