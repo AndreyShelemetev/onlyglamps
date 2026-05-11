@@ -161,11 +161,12 @@ public class ObjectsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var obj = await _db.GlampingObjects
+            .AsNoTracking()
+            .AsSplitQuery()
             .Where(o => o.Id == id && o.Status == ObjectStatus.Published)
             .Include(o => o.ObjectType)
             .Include(o => o.Region)
             .Include(o => o.CityOrDistrict)
-            .Include(o => o.Owner)
             .Include(o => o.Tariffs)
             .Include(o => o.Photos.OrderBy(p => p.SortOrder))
             .Include(o => o.Reviews.Where(r => r.Status == ReviewStatus.Published))
@@ -180,6 +181,7 @@ public class ObjectsController : ControllerBase
             return NotFound(new { error = "Object not found" });
 
         var fieldSchema = await _db.ObjectTypeFields
+            .AsNoTracking()
             .Where(f => f.ObjectTypeId == obj.ObjectTypeId)
             .OrderBy(f => f.SortOrder).ThenBy(f => f.Id)
             .ToListAsync();

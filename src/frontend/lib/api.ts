@@ -1,4 +1,5 @@
 const API_URL = process.env.BACKEND_INTERNAL_URL || "http://backend:5000";
+const PUBLIC_FETCH_OPTIONS = { next: { revalidate: 300 } };
 
 export interface ObjectListItem {
   id: number;
@@ -75,7 +76,7 @@ export async function fetchObjects(params: Record<string, string> = {}): Promise
   const qs = new URLSearchParams(params).toString();
   const url = `${API_URL}/api/objects${qs ? `?${qs}` : ""}`;
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return { data: [], total: 0, page: 1, pageSize: 20 };
     return await res.json();
   } catch {
@@ -85,7 +86,7 @@ export async function fetchObjects(params: Record<string, string> = {}): Promise
 
 export async function fetchObjectBySlug(slug: string): Promise<ObjectDetail | null> {
   try {
-    const res = await fetch(`${API_URL}/api/objects/by-slug/${encodeURIComponent(slug)}`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/api/objects/by-slug/${encodeURIComponent(slug)}`, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -95,7 +96,7 @@ export async function fetchObjectBySlug(slug: string): Promise<ObjectDetail | nu
 
 export async function fetchRegions(): Promise<RegionData[]> {
   try {
-    const res = await fetch(`${API_URL}/api/regions`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/api/regions`, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -105,7 +106,7 @@ export async function fetchRegions(): Promise<RegionData[]> {
 
 export async function fetchObjectTypes(): Promise<{ id: number; name: string; slug: string; icon?: string; colorFrom?: string; colorTo?: string }[]> {
   try {
-    const res = await fetch(`${API_URL}/api/catalog/types`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/api/catalog/types`, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -115,7 +116,7 @@ export async function fetchObjectTypes(): Promise<{ id: number; name: string; sl
 
 export async function fetchPopularQueries(): Promise<PopularQueryItem[]> {
   try {
-    const res = await fetch(`${API_URL}/api/catalog/popular-queries`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/api/catalog/popular-queries`, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -138,7 +139,7 @@ export interface MapPoint {
 
 export async function fetchMapPoints(): Promise<MapPoint[]> {
   try {
-    const res = await fetch(`${API_URL}/api/objects/map-points`, { cache: "no-store" });
+    const res = await fetch(`${API_URL}/api/objects/map-points`, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return [];
     return await res.json();
   } catch {

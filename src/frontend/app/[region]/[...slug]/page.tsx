@@ -41,19 +41,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const parsed = parsePath(params.region, params.slug);
   if (!parsed) return {};
 
-  const [regions, types] = await Promise.all([fetchRegions(), fetchObjectTypes()]);
-  const region = regions.find((r) => r.slug === params.region);
-  if (!region) return {};
-
   if (parsed.kind === "object") {
-    const obj = await fetchObjectBySlug(parsed.objectSlug);
-    if (!obj) return {};
+    const [regions, obj] = await Promise.all([
+      fetchRegions(),
+      fetchObjectBySlug(parsed.objectSlug),
+    ]);
+    const region = regions.find((r) => r.slug === params.region);
+    if (!region || !obj) return {};
+
     return {
       title: `${obj.name} — ${obj.objectType.name} в ${region.name}`,
       description: `Фото, цены, вместимость, удобства, карта, отзывы и свободные даты для отдыха в ${obj.name}.`,
       alternates: { canonical: `/${region.slug}/${parsed.citySlug}/${parsed.objectSlug}/` },
     };
   }
+
+  const [regions, types] = await Promise.all([fetchRegions(), fetchObjectTypes()]);
+  const region = regions.find((r) => r.slug === params.region);
+  if (!region) return {};
 
   if (parsed.kind === "city") {
     // Check if it's type or city
@@ -93,20 +98,14 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   const parsed = parsePath(params.region, params.slug);
   if (!parsed) notFound();
 
-  const [regions, types, popularQueries, allMapPoints] = await Promise.all([
-    fetchRegions(),
-    fetchObjectTypes(),
-    fetchPopularQueries(),
-    fetchMapPoints(),
-  ]);
-
-  const region = regions.find((r) => r.slug === params.region);
-  if (!region) notFound();
-
   // --- Object detail page ---
   if (parsed.kind === "object") {
-    const obj = await fetchObjectBySlug(parsed.objectSlug);
-    if (!obj) notFound();
+    const [regions, obj] = await Promise.all([
+      fetchRegions(),
+      fetchObjectBySlug(parsed.objectSlug),
+    ]);
+    const region = regions.find((r) => r.slug === params.region);
+    if (!region || !obj) notFound();
 
     const city = region.cities.find((c) => c.slug === parsed.citySlug);
 
@@ -146,6 +145,16 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       </div>
     );
   }
+
+  const [regions, types, popularQueries, allMapPoints] = await Promise.all([
+    fetchRegions(),
+    fetchObjectTypes(),
+    fetchPopularQueries(),
+    fetchMapPoints(),
+  ]);
+
+  const region = regions.find((r) => r.slug === params.region);
+  if (!region) notFound();
 
   // --- Determine if first segment is type or city ---
   const hasFilters = Object.keys(searchParams).length > 0;
