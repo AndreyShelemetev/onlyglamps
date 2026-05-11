@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Все направления отдыха",
   description: "Список регионов и городов, где представлены объекты для отдыха.",
   alternates: { canonical: "/directions/" },
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
 };
 
 export const dynamic = "force-dynamic";

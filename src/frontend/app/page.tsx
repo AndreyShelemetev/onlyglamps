@@ -10,9 +10,11 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const [{ data: objects }, regions, types] = await Promise.all([
-    fetchObjects(),
+    fetchObjects({ pageSize: "6" }),
     fetchRegions(),
     fetchObjectTypes(),
   ]);
@@ -81,9 +83,7 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-2xl font-bold text-navy-900 mb-6">Популярные предложения</h2>
           {objects.length === 0 ? (
-            <p className="text-navy-500">
-              Объекты загружаются... Проверьте, что backend запущен.
-            </p>
+            <p className="text-navy-500">Пока нет опубликованных объектов.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {objects.map((obj) => (
