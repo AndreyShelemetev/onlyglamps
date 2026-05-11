@@ -170,12 +170,12 @@ function MobileMenu() {
 }
 
 const accommodationTypes: DropdownItem[] = [
-  { label: "Глэмпинги", href: "/mari-el/glempingi/" },
-  { label: "Гостевые дома", href: "/mari-el/gostevye-doma/" },
-  { label: "Бани и сауны", href: "/mari-el/bani/" },
-  { label: "Коттеджи", href: "/mari-el/kottedzhi/" },
-  { label: "Базы отдыха", href: "/mari-el/bazy-otdykha/" },
-  { label: "Парк-отели", href: "/mari-el/park-oteli/" },
+  { label: "Глэмпинги", href: "/map/?type=glempingi" },
+  { label: "Гостевые дома", href: "/map/?type=gostevye-doma" },
+  { label: "Бани и сауны", href: "/map/?type=bani" },
+  { label: "Коттеджи", href: "/map/?type=kottedzhi" },
+  { label: "Базы отдыха", href: "/map/?type=bazy-otdykha" },
+  { label: "Парк-отели", href: "/map/?type=park-oteli" },
 ];
 
 const destinations: DropdownItem[] = [
@@ -187,6 +187,7 @@ const destinations: DropdownItem[] = [
   { label: "Карелия", href: "/kareliya/" },
   { label: "Алтайский край", href: "/altayskiy-kray/" },
   { label: "Дагестан", href: "/dagestan/" },
+  { label: "Смотреть все направления", href: "/directions/" },
 ];
 
 export function HeaderNav() {

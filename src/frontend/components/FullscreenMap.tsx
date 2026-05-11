@@ -18,6 +18,7 @@ interface ObjectType {
 interface FullscreenMapProps {
   points: MapPoint[];
   types: ObjectType[];
+  initialTypeSlug?: string | null;
 }
 
 let scriptLoading = false;
@@ -87,10 +88,11 @@ function formatPrice(price: number | null): string {
   return `от ${price.toLocaleString("ru-RU")} ₽`;
 }
 
-export function FullscreenMap({ points, types }: FullscreenMapProps) {
+export function FullscreenMap({ points, types, initialTypeSlug = null }: FullscreenMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const initialTypeRef = useRef(initialTypeSlug);
+  const [activeFilter, setActiveFilter] = useState<string | null>(initialTypeSlug);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
   const placemarksByType = useRef<Record<string, any[]>>({});
 
@@ -179,10 +181,14 @@ export function FullscreenMap({ points, types }: FullscreenMapProps) {
       placemarksByType.current[slug].push(placemark);
     });
 
-    clusterer.add(allPlacemarks);
+    const initialType = initialTypeRef.current;
+    const visiblePlacemarks = initialType
+      ? allPlacemarks.filter((pm: any) => pm.__typeSlug === initialType)
+      : allPlacemarks;
+    clusterer.add(visiblePlacemarks);
     map.geoObjects.add(clusterer);
 
-    if (points.length > 0) {
+    if (visiblePlacemarks.length > 0) {
       map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
     }
 
@@ -210,22 +216,32 @@ export function FullscreenMap({ points, types }: FullscreenMapProps) {
 
     clusterer.removeAll();
 
-    if (!activeFilter) {
-      clusterer.add(allPlacemarks);
-    } else {
-      const filtered = allPlacemarks.filter(
-        (pm: any) => pm.__typeSlug === activeFilter
-      );
-      clusterer.add(filtered);
+    const visiblePlacemarks = activeFilter
+      ? allPlacemarks.filter((pm: any) => pm.__typeSlug === activeFilter)
+      : allPlacemarks;
+    clusterer.add(visiblePlacemarks);
+
+    if (visiblePlacemarks.length > 0) {
+      map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
     }
   }, [activeFilter]);
+
+  const setFilter = (typeSlug: string | null) => {
+    setActiveFilter(typeSlug);
+    setSelectedPoint(null);
+
+    const nextUrl = typeSlug
+      ? `/map/?type=${encodeURIComponent(typeSlug)}`
+      : "/map/";
+    window.history.replaceState(null, "", nextUrl);
+  };
 
   return (
     <div className="relative flex-1 flex flex-col">
       {/* Filter bar */}
       <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center gap-2 overflow-x-auto shrink-0">
         <button
-          onClick={() => setActiveFilter(null)}
+          onClick={() => setFilter(null)}
           className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-semibold transition ${
             !activeFilter
               ? "bg-navy-800 text-white ring-2 ring-navy-400"
@@ -247,9 +263,7 @@ export function FullscreenMap({ points, types }: FullscreenMapProps) {
           return (
             <button
               key={type.slug}
-              onClick={() =>
-                setActiveFilter(isActive ? null : type.slug)
-              }
+              onClick={() => setFilter(isActive ? null : type.slug)}
               className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-semibold transition ${
                 isActive ? colors.active : colors.inactive
               }`}
@@ -306,7 +320,7 @@ export function FullscreenMap({ points, types }: FullscreenMapProps) {
       )}
 
       {/* Empty state */}
-      {points.length === 0 && (
+      {filteredPoints.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
