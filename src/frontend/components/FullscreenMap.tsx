@@ -19,6 +19,8 @@ interface FullscreenMapProps {
   points: MapPoint[];
   types: ObjectType[];
   initialTypeSlug?: string | null;
+  initialPageSize?: number;
+  initialPointsFiltered?: boolean;
 }
 
 let scriptLoading = false;
@@ -88,26 +90,129 @@ function formatPrice(price: number | null): string {
   return `от ${price.toLocaleString("ru-RU")} ₽`;
 }
 
-export function FullscreenMap({ points, types, initialTypeSlug = null }: FullscreenMapProps) {
+export function FullscreenMap({
+  points,
+  types,
+  initialTypeSlug = null,
+  initialPageSize = 80,
+  initialPointsFiltered = false,
+}: FullscreenMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const initialTypeRef = useRef(initialTypeSlug);
   const [activeFilter, setActiveFilter] = useState<string | null>(initialTypeSlug);
+  const activeFilterRef = useRef<string | null>(initialTypeSlug);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
-  const placemarksByType = useRef<Record<string, any[]>>({});
+  const [mapPoints, setMapPoints] = useState<MapPoint[]>(points);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(true);
+  const mapPointsRef = useRef<MapPoint[]>(points);
+  const clustererRef = useRef<any>(null);
+  const allPlacemarksRef = useRef<any[]>([]);
+  const placemarkIdsRef = useRef<Set<number>>(new Set());
+  const boundsWereFitRef = useRef(false);
 
   const filteredPoints = activeFilter
-    ? points.filter((p) => p.objectType.slug === activeFilter)
-    : points;
+    ? mapPoints.filter((p) => p.objectType.slug === activeFilter)
+    : mapPoints;
+
+  const createPlacemark = useCallback((point: MapPoint) => {
+    const slug = point.objectType.slug;
+    const regionSlug = point.region.slug;
+    const citySlug = point.cityOrDistrict.slug;
+    const url = `/${regionSlug}/${citySlug}/${point.slug}-${point.id}/`;
+
+    const photoHtml = point.mainPhotoUrl
+      ? `<img src="${point.mainPhotoUrl}" alt="${point.name}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />`
+      : "";
+
+    const priceHtml = point.minPrice
+      ? `<div style="font-weight:600;color:#2563eb;margin-top:4px;">${formatPrice(point.minPrice)}</div>`
+      : "";
+
+    const balloonContent = `
+      <div style="min-width:200px;max-width:280px;">
+        ${photoHtml}
+        <div style="font-weight:700;font-size:14px;margin-bottom:4px;">
+          <a href="${url}" style="color:#1e293b;text-decoration:none;">${point.name}</a>
+        </div>
+        <div style="font-size:12px;color:#64748b;">${point.objectType.name} · ${point.cityOrDistrict.name}</div>
+        ${priceHtml}
+        <a href="${url}" style="display:inline-block;margin-top:8px;padding:6px 16px;background:#16a34a;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Подробнее</a>
+      </div>
+    `;
+
+    const placemark = new window.ymaps.Placemark(
+      [point.latitude, point.longitude],
+      {
+        balloonContentBody: balloonContent,
+        hintContent: point.name,
+      },
+      {
+        preset: typeColors[slug] || "islands#blueDotIcon",
+      }
+    );
+
+    (placemark as any).__typeSlug = slug;
+    (placemark as any).__pointId = point.id;
+
+    placemark.events.add("click", () => {
+      setSelectedPoint(point);
+    });
+
+    return placemark;
+  }, []);
+
+  const addPointsToMap = useCallback((nextPoints: MapPoint[]) => {
+    const map = mapRef.current;
+    const clusterer = clustererRef.current;
+    if (!map || !clusterer || !window.ymaps) return;
+
+    const visibleNewPlacemarks: any[] = [];
+    for (const point of nextPoints) {
+      if (placemarkIdsRef.current.has(point.id)) continue;
+      const placemark = createPlacemark(point);
+      placemarkIdsRef.current.add(point.id);
+      allPlacemarksRef.current.push(placemark);
+
+      if (!activeFilterRef.current || point.objectType.slug === activeFilterRef.current) {
+        visibleNewPlacemarks.push(placemark);
+      }
+    }
+
+    if (visibleNewPlacemarks.length === 0) return;
+    clusterer.add(visibleNewPlacemarks);
+
+    if (!boundsWereFitRef.current) {
+      const bounds = clusterer.getBounds();
+      if (bounds) {
+        map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
+        boundsWereFitRef.current = true;
+      }
+    }
+  }, [createPlacemark]);
+
+  const mergePoints = useCallback((nextPoints: MapPoint[]) => {
+    if (nextPoints.length === 0) return;
+    setMapPoints((current) => {
+      const seen = new Set(current.map((point) => point.id));
+      const merged = [...current];
+      for (const point of nextPoints) {
+        if (seen.has(point.id)) continue;
+        seen.add(point.id);
+        merged.push(point);
+      }
+      return merged;
+    });
+  }, []);
 
   const initMap = useCallback(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const currentPoints = mapPointsRef.current;
     const center =
-      points.length > 0
+      currentPoints.length > 0
         ? [
-            points.reduce((s, p) => s + p.latitude, 0) / points.length,
-            points.reduce((s, p) => s + p.longitude, 0) / points.length,
+            currentPoints.reduce((s, p) => s + p.latitude, 0) / currentPoints.length,
+            currentPoints.reduce((s, p) => s + p.longitude, 0) / currentPoints.length,
           ]
         : [56.63, 47.89];
 
@@ -127,75 +232,11 @@ export function FullscreenMap({ points, types, initialTypeSlug = null }: Fullscr
       geoObjectHideIconOnBalloonOpen: false,
     });
 
-    const allPlacemarks: any[] = [];
-    placemarksByType.current = {};
-
-    points.forEach((point) => {
-      const slug = point.objectType.slug;
-      const regionSlug = point.region.slug;
-      const citySlug = point.cityOrDistrict.slug;
-      const url = `/${regionSlug}/${citySlug}/${point.slug}-${point.id}/`;
-
-      const photoHtml = point.mainPhotoUrl
-        ? `<img src="${point.mainPhotoUrl}" alt="${point.name}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:8px;" />`
-        : "";
-
-      const priceHtml = point.minPrice
-        ? `<div style="font-weight:600;color:#2563eb;margin-top:4px;">${formatPrice(point.minPrice)}</div>`
-        : "";
-
-      const balloonContent = `
-        <div style="min-width:200px;max-width:280px;">
-          ${photoHtml}
-          <div style="font-weight:700;font-size:14px;margin-bottom:4px;">
-            <a href="${url}" style="color:#1e293b;text-decoration:none;">${point.name}</a>
-          </div>
-          <div style="font-size:12px;color:#64748b;">${point.objectType.name} · ${point.cityOrDistrict.name}</div>
-          ${priceHtml}
-          <a href="${url}" style="display:inline-block;margin-top:8px;padding:6px 16px;background:#16a34a;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">Подробнее</a>
-        </div>
-      `;
-
-      const placemark = new window.ymaps.Placemark(
-        [point.latitude, point.longitude],
-        {
-          balloonContentBody: balloonContent,
-          hintContent: point.name,
-        },
-        {
-          preset: typeColors[slug] || "islands#blueDotIcon",
-        }
-      );
-
-      (placemark as any).__typeSlug = slug;
-      (placemark as any).__pointId = point.id;
-
-      placemark.events.add("click", () => {
-        setSelectedPoint(point);
-      });
-
-      allPlacemarks.push(placemark);
-      if (!placemarksByType.current[slug]) {
-        placemarksByType.current[slug] = [];
-      }
-      placemarksByType.current[slug].push(placemark);
-    });
-
-    const initialType = initialTypeRef.current;
-    const visiblePlacemarks = initialType
-      ? allPlacemarks.filter((pm: any) => pm.__typeSlug === initialType)
-      : allPlacemarks;
-    clusterer.add(visiblePlacemarks);
     map.geoObjects.add(clusterer);
-
-    if (visiblePlacemarks.length > 0) {
-      map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
-    }
-
     mapRef.current = map;
-    (mapRef.current as any).__clusterer = clusterer;
-    (mapRef.current as any).__allPlacemarks = allPlacemarks;
-  }, [points]);
+    clustererRef.current = clusterer;
+    addPointsToMap(currentPoints);
+  }, [addPointsToMap]);
 
   useEffect(() => {
     loadYmaps(initMap);
@@ -204,27 +245,74 @@ export function FullscreenMap({ points, types, initialTypeSlug = null }: Fullscr
         mapRef.current.destroy();
         mapRef.current = null;
       }
+      clustererRef.current = null;
+      allPlacemarksRef.current = [];
+      placemarkIdsRef.current = new Set();
+      boundsWereFitRef.current = false;
     };
   }, [initMap]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    mapPointsRef.current = mapPoints;
+    addPointsToMap(mapPoints);
+  }, [mapPoints, addPointsToMap]);
+
+  useEffect(() => {
+    activeFilterRef.current = activeFilter;
+    if (!mapRef.current || !clustererRef.current) return;
     const map = mapRef.current;
-    const clusterer = map.__clusterer;
-    const allPlacemarks = map.__allPlacemarks;
-    if (!clusterer || !allPlacemarks) return;
+    const clusterer = clustererRef.current;
 
     clusterer.removeAll();
 
     const visiblePlacemarks = activeFilter
-      ? allPlacemarks.filter((pm: any) => pm.__typeSlug === activeFilter)
-      : allPlacemarks;
+      ? allPlacemarksRef.current.filter((pm: any) => pm.__typeSlug === activeFilter)
+      : allPlacemarksRef.current;
     clusterer.add(visiblePlacemarks);
 
     if (visiblePlacemarks.length > 0) {
       map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
     }
   }, [activeFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMorePoints() {
+      setIsLoadingPoints(true);
+      let page = initialPointsFiltered || points.length === 0 ? 1 : 2;
+
+      while (!cancelled) {
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(initialPageSize),
+        });
+        const res = await fetch(`/api/objects/map-points?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) break;
+
+        const chunk = await res.json();
+        if (!Array.isArray(chunk) || chunk.length === 0) break;
+
+        mergePoints(chunk);
+        if (chunk.length < initialPageSize) break;
+
+        page += 1;
+        await new Promise((resolve) => window.setTimeout(resolve, 80));
+      }
+
+      if (!cancelled) setIsLoadingPoints(false);
+    }
+
+    loadMorePoints().catch(() => {
+      if (!cancelled) setIsLoadingPoints(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialPageSize, initialPointsFiltered, mergePoints, points.length]);
 
   const setFilter = (typeSlug: string | null) => {
     setActiveFilter(typeSlug);
@@ -248,10 +336,10 @@ export function FullscreenMap({ points, types, initialTypeSlug = null }: Fullscr
               : "bg-navy-50 text-navy-700 hover:bg-navy-100 border border-navy-200"
           }`}
         >
-          Все ({points.length})
+          Все ({mapPoints.length})
         </button>
         {types.map((type) => {
-          const count = points.filter(
+          const count = mapPoints.filter(
             (p) => p.objectType.slug === type.slug
           ).length;
           if (count === 0) return null;
@@ -272,6 +360,11 @@ export function FullscreenMap({ points, types, initialTypeSlug = null }: Fullscr
             </button>
           );
         })}
+        {isLoadingPoints && (
+          <span className="whitespace-nowrap text-xs text-gray-500 px-2">
+            Загружаем точки...
+          </span>
+        )}
       </div>
 
       {/* Map */}
@@ -320,7 +413,7 @@ export function FullscreenMap({ points, types, initialTypeSlug = null }: Fullscr
       )}
 
       {/* Empty state */}
-      {filteredPoints.length === 0 && (
+      {filteredPoints.length === 0 && !isLoadingPoints && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>

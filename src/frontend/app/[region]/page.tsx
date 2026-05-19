@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ObjectCardWide } from "@/components/ObjectCardWide";
 import { ListingMap } from "@/components/ListingMap";
 import { FilterBar } from "@/components/FilterBar";
+import { ObjectLinkBlock, RegionLinkBlock } from "@/components/InternalLinkBlocks";
 import { Suspense } from "react";
 
 interface Props {
@@ -37,7 +38,12 @@ export default async function RegionPage({ params, searchParams }: Props) {
 
   const hasFilters = Object.keys(searchParams).length > 0;
   const apiParams: Record<string, string> = { region: params.region, ...searchParams };
-  const { data: objects, total } = await fetchObjects(apiParams);
+  const [{ data: objects, total }, { data: glampingLinks }] = await Promise.all([
+    fetchObjects(apiParams),
+    hasFilters
+      ? Promise.resolve({ data: [], total: 0, page: 1, pageSize: 4 })
+      : fetchObjects({ region: params.region, type: "glempingi", pageSize: "4" }),
+  ]);
 
   const mapPoints = allMapPoints.filter((p) => p.region.slug === params.region);
   const basePath = `/${region.slug}/`;
@@ -100,6 +106,19 @@ export default async function RegionPage({ params, searchParams }: Props) {
           </div>
         </div>
       </div>
+
+      {!hasFilters && (
+        <>
+          <ObjectLinkBlock
+            title={`Глэмпинги в регионе ${region.name}`}
+            objects={glampingLinks}
+          />
+          <RegionLinkBlock
+            regions={regions}
+            currentRegionSlug={region.slug}
+          />
+        </>
+      )}
 
       {/* SEO footer block — render only on the canonical (non-filtered) page */}
       {!hasFilters && (

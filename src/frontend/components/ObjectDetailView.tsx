@@ -1,4 +1,4 @@
-import { ObjectDetail, ObjectListItem } from "@/lib/api";
+import { ObjectDetail, ObjectListItem, RegionData } from "@/lib/api";
 import { YandexMap } from "./YandexMap";
 import { ImageSlider } from "./ImageSlider";
 import { ObjectCard } from "./ObjectCard";
@@ -6,13 +6,18 @@ import { ObjectTabs } from "./ObjectTabs";
 import { Accordion } from "./Tabs";
 import { AmenityIcon, Icons } from "./AmenityIcon";
 import { splitDescriptionByH3 } from "@/lib/desc";
+import { ObjectLinkBlock, RegionLinkBlock } from "./InternalLinkBlocks";
 
 export function ObjectDetailView({
   obj,
   nearby = [],
+  glampingLinks = [],
+  regionLinks = [],
 }: {
   obj: ObjectDetail;
   nearby?: ObjectListItem[];
+  glampingLinks?: ObjectListItem[];
+  regionLinks?: RegionData[];
 }) {
   // ── FAQ (drives both Accordion and FAQPage JSON-LD) ──────────────────────
   const faq: { q: string; a: string }[] = [];
@@ -446,6 +451,16 @@ export function ObjectDetailView({
           </div>
         </section>
       )}
+
+      <ObjectLinkBlock
+        title={`Другие глэмпинги в регионе ${obj.region.name}`}
+        objects={glampingLinks}
+      />
+
+      <RegionLinkBlock
+        regions={regionLinks}
+        currentRegionSlug={obj.region.slug}
+      />
     </>
   );
 }

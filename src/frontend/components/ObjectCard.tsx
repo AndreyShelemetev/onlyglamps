@@ -36,7 +36,15 @@ function pickAmenityIcons(amenities: string[], limit = 6) {
   return result;
 }
 
-export function ObjectCard({ obj, basePath }: { obj: ObjectListItem; basePath?: string }) {
+export function ObjectCard({
+  obj,
+  basePath,
+  showSourceButton = true,
+}: {
+  obj: ObjectListItem;
+  basePath?: string;
+  showSourceButton?: boolean;
+}) {
   const cardUrl = `/${obj.region.slug}/${obj.cityOrDistrict.slug}/${obj.slug}-${obj.id}/`;
   const iconAmenities = pickAmenityIcons(obj.amenities);
 
@@ -114,7 +122,7 @@ export function ObjectCard({ obj, basePath }: { obj: ObjectListItem; basePath?: 
           </div>
         </div>
 
-        {obj.sourceUrl && (
+        {showSourceButton && obj.sourceUrl && (
           <a
             href={obj.sourceUrl}
             target="_blank"

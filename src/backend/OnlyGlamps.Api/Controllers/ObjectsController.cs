@@ -17,10 +17,33 @@ public class ObjectsController : ControllerBase
     }
 
     [HttpGet("map-points")]
-    public async Task<IActionResult> GetMapPoints()
+    public async Task<IActionResult> GetMapPoints(
+        [FromQuery] string? type = null,
+        [FromQuery] int? page = null,
+        [FromQuery] int pageSize = 100)
     {
-        var points = await _db.GlampingObjects
+        var query = _db.GlampingObjects
+            .AsNoTracking()
             .Where(o => o.Status == ObjectStatus.Published && o.Latitude != null && o.Longitude != null)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(type))
+            query = query.Where(o => o.ObjectType.Slug == type);
+
+        query = query
+            .OrderByDescending(o => o.CreatedAt)
+            .ThenBy(o => o.Id);
+
+        if (page.HasValue)
+        {
+            var currentPage = Math.Max(1, page.Value);
+            var currentPageSize = Math.Clamp(pageSize, 1, 200);
+            query = query
+                .Skip((currentPage - 1) * currentPageSize)
+                .Take(currentPageSize);
+        }
+
+        var points = await query
             .Select(o => new
             {
                 o.Id,

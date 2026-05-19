@@ -6,6 +6,7 @@ import { ObjectCardWide } from "@/components/ObjectCardWide";
 import { ListingMap } from "@/components/ListingMap";
 import { FilterBar } from "@/components/FilterBar";
 import { ObjectDetailView } from "@/components/ObjectDetailView";
+import { ObjectLinkBlock, RegionLinkBlock } from "@/components/InternalLinkBlocks";
 import { Suspense } from "react";
 
 interface Props {
@@ -130,6 +131,14 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
         if (nearby.length >= 4) break;
       }
     }
+    const { data: glampingLinksRaw } = await fetchObjects({
+      region: params.region,
+      type: "glempingi",
+      pageSize: "8",
+    });
+    const glampingLinks = glampingLinksRaw
+      .filter((o) => o.id !== obj.id)
+      .slice(0, 4);
 
     return (
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -141,7 +150,12 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
             { name: obj.name },
           ]}
         />
-        <ObjectDetailView obj={obj} nearby={nearby} />
+        <ObjectDetailView
+          obj={obj}
+          nearby={nearby}
+          glampingLinks={glampingLinks}
+          regionLinks={regions}
+        />
       </div>
     );
   }
@@ -184,7 +198,12 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
   if (effectiveCity) apiParams.city = effectiveCity;
   if (effectiveType) apiParams.type = effectiveType;
 
-  const { data: objects, total } = await fetchObjects(apiParams);
+  const [{ data: objects, total }, { data: glampingLinks }] = await Promise.all([
+    fetchObjects(apiParams),
+    hasFilters
+      ? Promise.resolve({ data: [], total: 0, page: 1, pageSize: 4 })
+      : fetchObjects({ region: params.region, type: "glempingi", pageSize: "4" }),
+  ]);
 
   // Filter map points
   const mapPoints = allMapPoints.filter((p) => {
@@ -274,6 +293,19 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
           </div>
         </div>
       </div>
+
+      {!hasFilters && (
+        <>
+          <ObjectLinkBlock
+            title={`Глэмпинги в регионе ${region.name}`}
+            objects={glampingLinks}
+          />
+          <RegionLinkBlock
+            regions={regions}
+            currentRegionSlug={region.slug}
+          />
+        </>
+      )}
     </div>
   );
 }

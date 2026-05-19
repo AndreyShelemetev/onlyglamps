@@ -18,19 +18,29 @@ export function generateMetadata({ searchParams }: Props): Metadata {
   };
 }
 
+const INITIAL_MAP_PAGE_SIZE = 80;
+
 export default async function MapPage({ searchParams }: Props) {
-  const [points, types] = await Promise.all([
-    fetchMapPoints(),
-    fetchObjectTypes(),
-  ]);
+  const types = await fetchObjectTypes();
   const requestedType = typeof searchParams.type === "string" ? searchParams.type : null;
   const initialTypeSlug = requestedType && types.some((type) => type.slug === requestedType)
     ? requestedType
     : null;
+  const points = await fetchMapPoints({
+    page: "1",
+    pageSize: String(INITIAL_MAP_PAGE_SIZE),
+    ...(initialTypeSlug ? { type: initialTypeSlug } : {}),
+  });
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <FullscreenMap points={points} types={types} initialTypeSlug={initialTypeSlug} />
+      <FullscreenMap
+        points={points}
+        types={types}
+        initialTypeSlug={initialTypeSlug}
+        initialPageSize={INITIAL_MAP_PAGE_SIZE}
+        initialPointsFiltered={Boolean(initialTypeSlug)}
+      />
     </div>
   );
 }

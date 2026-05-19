@@ -137,9 +137,10 @@ export interface MapPoint {
   mainPhotoUrl: string | null;
 }
 
-export async function fetchMapPoints(): Promise<MapPoint[]> {
+export async function fetchMapPoints(params: Record<string, string> = {}): Promise<MapPoint[]> {
+  const qs = new URLSearchParams(params).toString();
   try {
-    const res = await fetch(`${API_URL}/api/objects/map-points`, PUBLIC_FETCH_OPTIONS);
+    const res = await fetch(`${API_URL}/api/objects/map-points${qs ? `?${qs}` : ""}`, PUBLIC_FETCH_OPTIONS);
     if (!res.ok) return [];
     return await res.json();
   } catch {
