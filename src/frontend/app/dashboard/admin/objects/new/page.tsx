@@ -116,7 +116,8 @@ export default function AdminNewObjectPage() {
         photos.length > 0 ? adminSavePhotos(token, objId!, photos) : Promise.resolve(),
         calendar.length > 0 ? adminSaveCalendar(token, objId!, calendar) : Promise.resolve(),
       ]);
-      await adminDirectPublish(token, objId!);
+      const publishRes = await adminDirectPublish(token, objId!);
+      if (publishRes?.error) { setError(publishRes.error); setSaving(false); return; }
       setDirty(false);
       setSuccess("Объект опубликован!");
     } catch (e: any) {

@@ -5,6 +5,99 @@ namespace OnlyGlamps.Api.Data;
 
 public static class DataSeeder
 {
+    // Idempotent: adds missing Russian regions plus one default city/district
+    // so imported draft objects can be attached without changing URL rules.
+    public static async Task SeedRegionsExpandAsync(AppDbContext db)
+    {
+        var regions = new (string Name, string Slug, string CityName, string CitySlug)[]
+        {
+            ("Московская область", "moskovskaya-oblast", "Москва", "moskva"),
+            ("Ленинградская область", "leningradskaya-oblast", "Санкт-Петербург", "sankt-peterburg"),
+            ("Краснодарский край", "krasnodarskiy-kray", "Краснодар", "krasnodar"),
+            ("Республика Крым", "respublika-krym", "Симферополь", "simferopol"),
+            ("Ставропольский край", "stavropolskiy-kray", "Ставрополь", "stavropol"),
+            ("Республика Башкортостан", "respublika-bashkortostan", "Уфа", "ufa"),
+            ("Свердловская область", "sverdlovskaya-oblast", "Екатеринбург", "ekaterinburg"),
+            ("Пермский край", "permskiy-kray", "Пермь", "perm"),
+            ("Тюменская область", "tyumenskaya-oblast", "Тюмень", "tyumen"),
+            ("Челябинская область", "chelyabinskaya-oblast", "Челябинск", "chelyabinsk"),
+            ("Ярославская область", "yaroslavskaya-oblast", "Ярославль", "yaroslavl"),
+            ("Тверская область", "tverskaya-oblast", "Тверь", "tver"),
+            ("Вологодская область", "vologodskaya-oblast", "Вологда", "vologda"),
+            ("Псковская область", "pskovskaya-oblast", "Псков", "pskov"),
+            ("Мурманская область", "murmanskaya-oblast", "Мурманск", "murmansk"),
+            ("Архангельская область", "arkhangelskaya-oblast", "Архангельск", "arkhangelsk"),
+            ("Новгородская область", "novgorodskaya-oblast", "Великий Новгород", "velikiy-novgorod"),
+            ("Калужская область", "kaluzhskaya-oblast", "Калуга", "kaluga"),
+            ("Тульская область", "tulskaya-oblast", "Тула", "tula"),
+            ("Рязанская область", "ryazanskaya-oblast", "Рязань", "ryazan"),
+            ("Владимирская область", "vladimirskaya-oblast", "Владимир", "vladimir"),
+            ("Костромская область", "kostromskaya-oblast", "Кострома", "kostroma"),
+            ("Смоленская область", "smolenskaya-oblast", "Смоленск", "smolensk"),
+            ("Воронежская область", "voronezhskaya-oblast", "Воронеж", "voronezh"),
+            ("Белгородская область", "belgorodskaya-oblast", "Белгород", "belgorod"),
+            ("Курская область", "kurskaya-oblast", "Курск", "kursk"),
+            ("Орловская область", "orlovskaya-oblast", "Орёл", "oryol"),
+            ("Липецкая область", "lipetskaya-oblast", "Липецк", "lipetsk"),
+            ("Тамбовская область", "tambovskaya-oblast", "Тамбов", "tambov"),
+            ("Саратовская область", "saratovskaya-oblast", "Саратов", "saratov"),
+            ("Самарская область", "samarskaya-oblast", "Самара", "samara"),
+            ("Ульяновская область", "ulyanovskaya-oblast", "Ульяновск", "ulyanovsk"),
+            ("Оренбургская область", "orenburgskaya-oblast", "Оренбург", "orenburg"),
+            ("Волгоградская область", "volgogradskaya-oblast", "Волгоград", "volgograd"),
+            ("Ростовская область", "rostovskaya-oblast", "Ростов-на-Дону", "rostov-na-donu"),
+            ("Астраханская область", "astrakhanskaya-oblast", "Астрахань", "astrakhan"),
+            ("Кабардино-Балкарская Республика", "kabardino-balkarskaya-respublika", "Нальчик", "nalchik"),
+            ("Карачаево-Черкесская Республика", "karachayevo-cherkesskaya-respublika", "Черкесск", "cherkessk"),
+            ("Республика Северная Осетия — Алания", "respublika-severnaya-osetiya", "Владикавказ", "vladikavkaz"),
+            ("Калининградская область", "kaliningradskaya-oblast", "Калининград", "kaliningrad"),
+            ("Иркутская область", "irkutskaya-oblast", "Иркутск", "irkutsk"),
+            ("Красноярский край", "krasnoyarskiy-kray", "Красноярск", "krasnoyarsk"),
+            ("Хабаровский край", "khabarovskiy-kray", "Хабаровск", "khabarovsk"),
+            ("Приморский край", "primorskiy-kray", "Владивосток", "vladivostok"),
+            ("Республика Бурятия", "respublika-buryatiya", "Улан-Удэ", "ulan-ude"),
+            ("Кемеровская область", "kemerovskaya-oblast", "Кемерово", "kemerovo"),
+            ("Томская область", "tomskaya-oblast", "Томск", "tomsk"),
+            ("Курганская область", "kurganskaya-oblast", "Курган", "kurgan"),
+            ("Ханты-Мансийский АО — Югра", "khanty-mansiyskiy-ao", "Ханты-Мансийск", "khanty-mansiysk"),
+            ("Республика Хакасия", "respublika-khakasiya", "Абакан", "abakan"),
+            ("Республика Тыва", "respublika-tyva", "Кызыл", "kyzyl"),
+            ("Республика Калмыкия", "respublika-kalmykiya", "Элиста", "elista"),
+            ("Республика Алтай", "respublika-altay", "Горно-Алтайск", "gorno-altaysk"),
+            ("Кировская область", "kirovskaya-oblast", "Киров", "kirov"),
+            ("Забайкальский край", "zabaykalskiy-kray", "Чита", "chita"),
+            ("Амурская область", "amurskaya-oblast", "Благовещенск", "blagoveshchensk"),
+            ("Сахалинская область", "sakhalinskaya-oblast", "Южно-Сахалинск", "yuzhno-sakhalinsk"),
+        };
+
+        foreach (var (name, slug, cityName, citySlug) in regions)
+        {
+            var region = await db.Regions
+                .FirstOrDefaultAsync(r => r.Slug == slug || r.Name == name);
+
+            if (region == null)
+            {
+                region = new Region { Name = name, Slug = slug };
+                db.Regions.Add(region);
+                await db.SaveChangesAsync();
+            }
+
+            var hasDefaultCity = await db.CitiesAndDistricts
+                .AnyAsync(c => c.RegionId == region.Id && c.Slug == citySlug);
+            if (!hasDefaultCity)
+            {
+                db.CitiesAndDistricts.Add(new CityOrDistrict
+                {
+                    RegionId = region.Id,
+                    Name = cityName,
+                    Slug = citySlug,
+                    IsCity = true,
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+    }
+
     public static async Task SeedAsync(AppDbContext db)
     {
         if (await db.Regions.AnyAsync())

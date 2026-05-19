@@ -143,7 +143,8 @@ export default function AdminEditObjectPage() {
         adminSavePhotos(token, objectId, photos),
         adminSaveCalendar(token, objectId, calendar),
       ]);
-      await adminDirectPublish(token, objectId);
+      const publishRes = await adminDirectPublish(token, objectId);
+      if (publishRes?.error) { setError(publishRes.error); setSaving(false); return; }
       setStatus("Published");
       setDirty(false);
       setSuccess("Объект опубликован!");

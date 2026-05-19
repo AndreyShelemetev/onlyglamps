@@ -32,5 +32,8 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Generated DB import dumps
+deploy/imports/*.sql
+
 # MinIO data
 minio-data/

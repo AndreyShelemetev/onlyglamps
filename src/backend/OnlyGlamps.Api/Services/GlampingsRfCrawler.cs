@@ -425,9 +425,11 @@ public class GlampingsRfCrawler
         if (gm.Success && int.TryParse(gm.Groups[1].Value, out var cap) && cap >= 1 && cap <= 50)
             capacity = cap;
 
-        // Финальное название
-        var finalName = !string.IsNullOrWhiteSpace(h1) ? h1
-            : (!string.IsNullOrWhiteSpace(name) ? name : null);
+        // Финальное название. H1 usually carries a cleaner marketing title,
+        // but some pages use generic "Объект #123"; then JSON-LD is better.
+        var jsonName = !string.IsNullOrWhiteSpace(name) ? name.Trim() : null;
+        var finalName = !IsGenericObjectName(h1) ? h1
+            : (!IsGenericObjectName(jsonName) ? jsonName : h1 ?? jsonName);
         if (string.IsNullOrWhiteSpace(finalName)) return null;
 
         // Регион
@@ -771,6 +773,14 @@ public class GlampingsRfCrawler
         return Regex.Replace(t, @"\s+", " ").Trim();
     }
 
+    private static bool IsGenericObjectName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        var normalized = Regex.Replace(value, @"\s*#\d+\s*$", "");
+        normalized = Regex.Replace(normalized, @"\s+", " ").Trim().ToLowerInvariant();
+        return normalized is "объект" or "объект размещения";
+    }
+
     /// <summary>Собирает FullDescription как HTML (sanitized) с разделами:
     /// Описание / Удобства и услуги / Как добраться / Поблизости / FAQ / Отзывы.</summary>
     private static string? BuildFullDescription(
@@ -852,29 +862,75 @@ public class GlampingsRfCrawler
     private async Task<string?> ResolveRegionSlugAsync(string? locality, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(locality)) return null;
-        var name = locality.Trim();
-        if (RegionAliases.TryGetValue(name, out var canon)) name = canon;
+        var originalName = locality.Trim();
+        var candidates = new List<string> { originalName };
+        if (RegionAliases.TryGetValue(originalName, out var canon) &&
+            !candidates.Contains(canon, StringComparer.OrdinalIgnoreCase))
+        {
+            candidates.Add(canon);
+        }
 
-        // Точное совпадение
+        // Exact name match, first by the source text and then by aliases.
         var slug = await _db.Regions
-            .Where(r => r.Name == name)
+            .Where(r => candidates.Contains(r.Name))
             .Select(r => r.Slug)
             .FirstOrDefaultAsync(ct);
         if (slug != null) return slug;
 
-        // Без суффиксов «область/край/республика»
-        var stripped = Regex.Replace(name, @"\s*(область|край|республика|автономный округ).*$",
-            "", RegexOptions.IgnoreCase).Trim();
-        if (stripped.Length > 0 && stripped != name)
+        // Slug match covers cases where our DB stores a short historical name
+        // ("Карелия") while the source or alias says "Республика Карелия".
+        var candidateSlugs = candidates
+            .Select(SlugService.Generate)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (candidateSlugs.Count > 0)
         {
             slug = await _db.Regions
-                .Where(r => r.Name.StartsWith(stripped))
+                .Where(r => candidateSlugs.Contains(r.Slug))
+                .Select(r => r.Slug)
+                .FirstOrDefaultAsync(ct);
+            if (slug != null) return slug;
+        }
+
+        // Match shortened variants: "Республика Татарстан" -> "Татарстан",
+        // "Ханты-Мансийский автономный округ — Югра" -> "Ханты-Мансийский".
+        var nameVariants = candidates
+            .SelectMany(GetRegionNameVariants)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (var variant in nameVariants)
+        {
+            slug = await _db.Regions
+                .Where(r => r.Name == variant || r.Name.StartsWith(variant))
                 .Select(r => r.Slug)
                 .FirstOrDefaultAsync(ct);
             if (slug != null) return slug;
         }
 
         return null;
+    }
+
+    private static IEnumerable<string> GetRegionNameVariants(string name)
+    {
+        yield return name;
+
+        var withoutRepublicPrefix = Regex.Replace(
+            name,
+            @"^(республика|респ\.)\s+",
+            "",
+            RegexOptions.IgnoreCase).Trim();
+        if (!string.Equals(withoutRepublicPrefix, name, StringComparison.OrdinalIgnoreCase))
+            yield return withoutRepublicPrefix;
+
+        var withoutSuffix = Regex.Replace(
+            name,
+            @"\s+(область|край|республика|автономный округ|ао)(?:\s+[—-]\s+.*)?$",
+            "",
+            RegexOptions.IgnoreCase).Trim();
+        if (!string.Equals(withoutSuffix, name, StringComparison.OrdinalIgnoreCase))
+            yield return withoutSuffix;
     }
 
     // ============================================================

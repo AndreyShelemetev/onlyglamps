@@ -19,20 +19,6 @@ public class AdminController : ControllerBase
 
     private int GetUserId() => _auth.GetUserIdFromContext(HttpContext) ?? 0;
 
-    private bool IsEditor() => User.IsInRole("Editor") && !User.IsInRole("Admin");
-
-    // Editors can only modify objects they own. Returns ForbidResult-equivalent
-    // payload when an editor tries to touch someone else's object.
-    private async Task<bool> CanEditorModifyObject(int objectId)
-    {
-        if (!IsEditor()) return true;
-        var ownerId = await _db.GlampingObjects
-            .Where(o => o.Id == objectId)
-            .Select(o => (int?)o.OwnerId)
-            .FirstOrDefaultAsync();
-        return ownerId == GetUserId();
-    }
-
     // ===================== OBJECTS =====================
 
     [HttpGet("objects")]
@@ -158,7 +144,7 @@ public class AdminController : ControllerBase
 
     // --- Moderation actions ---
     [HttpPost("objects/{id:int}/approve")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Editor")]
     public async Task<IActionResult> Approve(int id)
     {
         var obj = await _db.GlampingObjects.FindAsync(id);
@@ -190,8 +176,6 @@ public class AdminController : ControllerBase
     [HttpPost("objects/{id:int}/archive")]
     public async Task<IActionResult> Archive(int id)
     {
-        if (!await CanEditorModifyObject(id))
-            return Forbid();
         var obj = await _db.GlampingObjects.FindAsync(id);
         if (obj == null) return NotFound();
         obj.Status = ObjectStatus.Archived;
@@ -212,12 +196,6 @@ public class AdminController : ControllerBase
 
         var ids = req.ObjectIds.Distinct().ToList();
         var query = _db.GlampingObjects.Where(o => ids.Contains(o.Id));
-
-        if (IsEditor())
-        {
-            var userId = GetUserId();
-            query = query.Where(o => o.OwnerId == userId);
-        }
 
         var now = DateTime.UtcNow;
         var objects = await query.ToListAsync();
@@ -258,8 +236,6 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/seo")]
     public async Task<IActionResult> UpdateObjectSeo(int id, [FromBody] SeoRequest req)
     {
-        if (!await CanEditorModifyObject(id))
-            return Forbid();
         var obj = await _db.GlampingObjects.FindAsync(id);
         if (obj == null) return NotFound();
         obj.SeoTitle = req.Title;
@@ -690,8 +666,6 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/edit")]
     public async Task<IActionResult> EditObject(int id, [FromBody] ObjectSaveRequest req)
     {
-        if (!await CanEditorModifyObject(id))
-            return Forbid();
         var obj = await _db.GlampingObjects
             .Include(o => o.ObjectAmenities)
             .Include(o => o.ObjectTags)
@@ -759,8 +733,6 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/tariffs")]
     public async Task<IActionResult> SaveTariffs(int id, [FromBody] List<TariffRequest> tariffs)
     {
-        if (!await CanEditorModifyObject(id))
-            return Forbid();
         var obj = await _db.GlampingObjects.Include(o => o.Tariffs).FirstOrDefaultAsync(o => o.Id == id);
         if (obj == null) return NotFound();
         _db.Tariffs.RemoveRange(obj.Tariffs);
@@ -774,8 +746,6 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/photos")]
     public async Task<IActionResult> SavePhotos(int id, [FromBody] List<PhotoRequest> photos)
     {
-        if (!await CanEditorModifyObject(id))
-            return Forbid();
         var obj = await _db.GlampingObjects.Include(o => o.Photos).FirstOrDefaultAsync(o => o.Id == id);
         if (obj == null) return NotFound();
         _db.ObjectPhotos.RemoveRange(obj.Photos);
@@ -789,8 +759,6 @@ public class AdminController : ControllerBase
     [HttpPut("objects/{id:int}/calendar")]
     public async Task<IActionResult> SaveCalendar(int id, [FromBody] List<CalendarEntry> entries)
     {
-        if (!await CanEditorModifyObject(id))
-            return Forbid();
         var obj = await _db.GlampingObjects.Include(o => o.AvailabilityDates).FirstOrDefaultAsync(o => o.Id == id);
         if (obj == null) return NotFound();
         _db.AvailabilityCalendars.RemoveRange(obj.AvailabilityDates);
@@ -805,7 +773,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("objects/{id:int}/publish")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Editor")]
     public async Task<IActionResult> DirectPublish(int id)
     {
         var obj = await _db.GlampingObjects.FindAsync(id);

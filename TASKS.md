@@ -1,5 +1,19 @@
 # Tasks — OnlyGlamps MVP
 
+## Выполнено 2026-05-19
+
+- [x] Роль `Editor` получила возможность управлять объектами и публиковать карточки через админку; управление пользователями осталось только для `Admin`
+
+## Выполнено 2026-05-18
+
+- [x] Синхронизация локального `main` с GitHub `origin/main` до `92bdb43`
+- [x] Проверка сборки backend: `dotnet build src/backend/OnlyGlamps.sln`
+- [x] Проверка сборки frontend: `npm ci` + `npm run build`
+- [x] Проверка Docker Compose: `docker compose up -d --build`, сервисы стартовали через nginx на `http://localhost/`
+- [x] Анализ crawler глэмпинги.рф: источник сейчас даёт 701 URL карточек в sitemap, добор возможен после проверки справочников регионов и запуска без `MaxPerRegion=3`
+- [x] Добор объектов с глэмпинги.рф в локальную БД: восстановлен idempotent-досев регионов, исправлен generic H1 `Объект`, импортировано 653 Draft-карточки по 58 регионам, duplicate SourceUrl = 0
+- [x] Подготовлен серверный пакет переноса импортированных Draft-объектов: SQL-дамп `deploy/imports/glampings-rf-draft-import-2026-05-18.sql` и скрипты создания/применения с защитой Published-объектов
+
 ## Выполнено 2026-05-11
 
 - [x] Оптимизация публичной карточки объекта: `AsNoTracking` + `AsSplitQuery` для detail API, уменьшение SSR-запросов object-ветки и `revalidate: 300` для публичного каталога
