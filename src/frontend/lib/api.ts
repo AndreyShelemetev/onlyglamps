@@ -63,7 +63,22 @@ export interface RegionData {
   id: number;
   name: string;
   slug: string;
-  cities: { id: number; name: string; slug: string; isCity: boolean }[];
+  objectCount: number;
+  typeCounts: TypeCount[];
+  cities: {
+    id: number;
+    name: string;
+    slug: string;
+    isCity: boolean;
+    objectCount: number;
+    typeCounts: TypeCount[];
+  }[];
+}
+
+export interface TypeCount {
+  name: string;
+  slug: string;
+  count: number;
 }
 
 export interface PopularQueryItem {

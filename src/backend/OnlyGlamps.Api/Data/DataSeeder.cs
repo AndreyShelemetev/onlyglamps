@@ -68,6 +68,8 @@ public static class DataSeeder
             ("Забайкальский край", "zabaykalskiy-kray", "Чита", "chita"),
             ("Амурская область", "amurskaya-oblast", "Благовещенск", "blagoveshchensk"),
             ("Сахалинская область", "sakhalinskaya-oblast", "Южно-Сахалинск", "yuzhno-sakhalinsk"),
+            ("Республика Саха (Якутия)", "respublika-saha-yakutiya", "Якутск", "yakutsk"),
+            ("Удмуртская Республика", "udmurtskaya-respublika", "Ижевск", "izhevsk"),
         };
 
         foreach (var (name, slug, cityName, citySlug) in regions)

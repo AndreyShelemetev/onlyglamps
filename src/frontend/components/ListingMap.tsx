@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import type { MapPoint } from "@/lib/api";
+import { getMarkerPreset, makeTypeClusterer } from "@/lib/map-style";
 
 declare global {
   interface Window {
@@ -12,6 +13,16 @@ declare global {
 let scriptLoading = false;
 let scriptLoaded = false;
 const callbacks: (() => void)[] = [];
+
+function getPointsBounds(points: MapPoint[]) {
+  if (points.length === 0) return null;
+  const lats = points.map((point) => point.latitude);
+  const lons = points.map((point) => point.longitude);
+  return [
+    [Math.min(...lats), Math.min(...lons)],
+    [Math.max(...lats), Math.max(...lons)],
+  ];
+}
 
 function loadYmaps(cb: () => void) {
   if (scriptLoaded && window.ymaps) {
@@ -58,13 +69,23 @@ export function ListingMap({ points }: { points: MapPoint[] }) {
 
     map.behaviors.enable("scrollZoom");
 
-    const clusterer = new window.ymaps.Clusterer({
-      preset: "islands#invertedDarkGreenClusterIcons",
-      groupByCoordinates: false,
-      clusterDisableClickZoom: false,
-    });
+    const clusterers = new Map<string, any>();
+    const placemarksByType = new Map<string, any[]>();
 
-    const placemarks = points.map((point) => {
+    const getClusterer = (typeSlug: string) => {
+      let clusterer = clusterers.get(typeSlug);
+      if (!clusterer) {
+        clusterer = makeTypeClusterer(window.ymaps, typeSlug, {
+          groupByCoordinates: false,
+          clusterDisableClickZoom: false,
+        });
+        clusterers.set(typeSlug, clusterer);
+        map.geoObjects.add(clusterer);
+      }
+      return clusterer;
+    };
+
+    points.forEach((point) => {
       const priceText = point.minPrice
         ? `${Math.round(point.minPrice).toLocaleString("ru-RU")} ₽`
         : "";
@@ -91,7 +112,7 @@ export function ListingMap({ points }: { points: MapPoint[] }) {
         </div>
       `;
 
-      return new window.ymaps.Placemark(
+      const placemark = new window.ymaps.Placemark(
         [point.latitude, point.longitude],
         {
           balloonContentBody: balloonContent,
@@ -99,18 +120,22 @@ export function ListingMap({ points }: { points: MapPoint[] }) {
           iconContent: priceText || "",
         },
         {
-          preset: priceText
-            ? "islands#darkGreenStretchyIcon"
-            : "islands#darkGreenDotIcon",
+          preset: getMarkerPreset(point.objectType.slug, Boolean(priceText)),
         }
       );
+      (placemark as any).__typeSlug = point.objectType.slug;
+      if (!placemarksByType.has(point.objectType.slug)) {
+        placemarksByType.set(point.objectType.slug, []);
+      }
+      placemarksByType.get(point.objectType.slug)!.push(placemark);
     });
 
-    clusterer.add(placemarks);
-    map.geoObjects.add(clusterer);
+    placemarksByType.forEach((placemarks, typeSlug) => {
+      getClusterer(typeSlug).add(placemarks);
+    });
 
     if (points.length > 0) {
-      map.setBounds(clusterer.getBounds(), {
+      map.setBounds(getPointsBounds(points), {
         checkZoomRange: true,
         zoomMargin: 40,
       });

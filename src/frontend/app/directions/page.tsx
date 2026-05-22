@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { fetchMapPoints, fetchRegions } from "@/lib/api";
+import { fetchRegions, type TypeCount } from "@/lib/api";
 
 export const metadata: Metadata = {
   title: "Все направления отдыха",
@@ -11,6 +11,15 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+const typeBadgeClasses = [
+  "border-emerald-200 bg-emerald-50 text-emerald-800",
+  "border-sky-200 bg-sky-50 text-sky-800",
+  "border-amber-200 bg-amber-50 text-amber-900",
+  "border-rose-200 bg-rose-50 text-rose-800",
+  "border-violet-200 bg-violet-50 text-violet-800",
+  "border-slate-200 bg-slate-50 text-slate-700",
+];
+
 function formatObjectCount(count: number) {
   const mod10 = count % 10;
   const mod100 = count % 100;
@@ -19,16 +28,35 @@ function formatObjectCount(count: number) {
   return `${count} объектов`;
 }
 
-export default async function DirectionsPage() {
-  const [regions, points] = await Promise.all([
-    fetchRegions(),
-    fetchMapPoints(),
-  ]);
+function TypeCountBadge({
+  type,
+  index,
+  href,
+}: {
+  type: TypeCount;
+  index: number;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-sm font-medium transition hover:-translate-y-0.5 hover:shadow-sm ${typeBadgeClasses[index % typeBadgeClasses.length]}`}
+    >
+      <span>{type.name}</span>
+      <span className="rounded bg-white/70 px-1.5 py-0.5 text-xs font-semibold">
+        {type.count}
+      </span>
+    </a>
+  );
+}
 
-  const regionCounts = new Map<string, number>();
-  for (const point of points) {
-    regionCounts.set(point.region.slug, (regionCounts.get(point.region.slug) || 0) + 1);
-  }
+export default async function DirectionsPage() {
+  const regions = await fetchRegions();
+  const sortedRegions = [...regions].sort((a, b) => {
+    if (b.objectCount !== a.objectCount) return b.objectCount - a.objectCount;
+    return a.name.localeCompare(b.name, "ru");
+  });
+  const totalObjects = sortedRegions.reduce((sum, region) => sum + region.objectCount, 0);
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-6">
@@ -45,47 +73,77 @@ export default async function DirectionsPage() {
         </h1>
         <p className="text-gray-600">
           Регионы и города для отдыха в глэмпингах, гостевых домах, банях и базах отдыха.
+          Сейчас в каталоге {formatObjectCount(totalObjects)}.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {regions.map((region) => {
-          const count = regionCounts.get(region.slug) || 0;
+        {sortedRegions.map((region) => {
+          const activeCities = region.cities
+            .filter((city) => city.objectCount > 0)
+            .sort((a, b) => b.objectCount - a.objectCount || a.name.localeCompare(b.name, "ru"));
 
           return (
             <section
               key={region.slug}
-              className="border border-gray-200 rounded-lg bg-white p-4 hover:border-primary-200 hover:shadow-sm transition"
+              className="border border-gray-200 rounded-lg bg-white p-4 shadow-sm transition hover:border-primary-200 hover:shadow-md"
             >
-              <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
-                  <a
-                    href={`/${region.slug}/`}
-                    className="text-lg font-semibold text-navy-900 hover:text-primary-700 transition"
-                  >
-                    {region.name}
-                  </a>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {formatObjectCount(count)}
+                  {region.objectCount > 0 ? (
+                    <a
+                      href={`/${region.slug}/`}
+                      className="text-lg font-semibold text-navy-900 hover:text-primary-700 transition"
+                    >
+                      {region.name}
+                    </a>
+                  ) : (
+                    <span className="text-lg font-semibold text-navy-900">{region.name}</span>
+                  )}
+                  <div className="mt-2 inline-flex items-baseline gap-2 rounded-md bg-navy-900 px-3 py-1.5 text-white">
+                    <span className="text-xl font-bold leading-none">{region.objectCount}</span>
+                    <span className="text-xs text-white/75">
+                      {formatObjectCount(region.objectCount).replace(String(region.objectCount), "").trim()}
+                    </span>
                   </div>
                 </div>
-                <a
-                  href={`/${region.slug}/`}
-                  className="shrink-0 text-sm font-medium text-primary-700 hover:text-primary-800"
-                >
-                  Открыть
-                </a>
+                {region.objectCount > 0 && (
+                  <a
+                    href={`/${region.slug}/`}
+                    className="shrink-0 rounded-md border border-primary-200 px-2.5 py-1 text-sm font-medium text-primary-700 hover:bg-primary-50 hover:text-primary-800"
+                  >
+                    Открыть
+                  </a>
+                )}
               </div>
 
-              {region.cities.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {region.cities.map((city) => (
+              {region.typeCounts.length > 0 ? (
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {region.typeCounts.map((type, index) => (
+                    <TypeCountBadge
+                      key={`${region.slug}-${type.slug}`}
+                      type={type}
+                      index={index}
+                      href={`/${region.slug}/${type.slug}/`}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-4 rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                  Пока нет опубликованных объектов
+                </div>
+              )}
+
+              {activeCities.length > 0 && (
+                <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
+                  {activeCities.map((city) => (
                     <a
                       key={`${region.slug}-${city.slug}`}
                       href={`/${region.slug}/${city.slug}/`}
                       className="px-2.5 py-1 rounded-md bg-gray-50 text-sm text-gray-700 hover:bg-primary-50 hover:text-primary-700 transition"
                     >
                       {city.name}
+                      <span className="ml-1 text-xs text-gray-400">{city.objectCount}</span>
                     </a>
                   ))}
                 </div>

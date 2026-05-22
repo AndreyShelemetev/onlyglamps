@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { MapPoint } from "@/lib/api";
+import { getMarkerPreset, makeTypeClusterer } from "@/lib/map-style";
 
 declare global {
   interface Window {
@@ -27,6 +28,16 @@ let scriptLoading = false;
 let scriptLoaded = false;
 const callbacks: (() => void)[] = [];
 
+function getPointsBounds(points: MapPoint[]) {
+  if (points.length === 0) return null;
+  const lats = points.map((point) => point.latitude);
+  const lons = points.map((point) => point.longitude);
+  return [
+    [Math.min(...lats), Math.min(...lons)],
+    [Math.max(...lats), Math.max(...lons)],
+  ];
+}
+
 function loadYmaps(cb: () => void) {
   if (scriptLoaded && window.ymaps) {
     cb();
@@ -48,15 +59,6 @@ function loadYmaps(cb: () => void) {
   };
   document.head.appendChild(script);
 }
-
-const typeColors: Record<string, string> = {
-  glempingi: "islands#darkGreenDotIcon",
-  "gostevye-doma": "islands#blueDotIcon",
-  bani: "islands#redDotIcon",
-  kottedzhi: "islands#orangeDotIcon",
-  "bazy-otdykha": "islands#violetDotIcon",
-  "park-oteli": "islands#darkOrangeDotIcon",
-};
 
 const typeButtonColors: Record<string, { active: string; inactive: string }> = {
   glempingi: {
@@ -105,7 +107,7 @@ export function FullscreenMap({
   const [mapPoints, setMapPoints] = useState<MapPoint[]>(points);
   const [isLoadingPoints, setIsLoadingPoints] = useState(true);
   const mapPointsRef = useRef<MapPoint[]>(points);
-  const clustererRef = useRef<any>(null);
+  const clusterersRef = useRef<Map<string, any>>(new Map());
   const allPlacemarksRef = useRef<any[]>([]);
   const placemarkIdsRef = useRef<Set<number>>(new Set());
   const boundsWereFitRef = useRef(false);
@@ -147,7 +149,7 @@ export function FullscreenMap({
         hintContent: point.name,
       },
       {
-        preset: typeColors[slug] || "islands#blueDotIcon",
+        preset: getMarkerPreset(slug),
       }
     );
 
@@ -163,10 +165,24 @@ export function FullscreenMap({
 
   const addPointsToMap = useCallback((nextPoints: MapPoint[]) => {
     const map = mapRef.current;
-    const clusterer = clustererRef.current;
-    if (!map || !clusterer || !window.ymaps) return;
+    if (!map || !window.ymaps) return;
 
-    const visibleNewPlacemarks: any[] = [];
+    const getClusterer = (typeSlug: string) => {
+      let clusterer = clusterersRef.current.get(typeSlug);
+      if (!clusterer) {
+        clusterer = makeTypeClusterer(window.ymaps, typeSlug, {
+          groupByCoordinates: false,
+          clusterDisableClickZoom: false,
+          clusterHideIconOnBalloonOpen: false,
+          geoObjectHideIconOnBalloonOpen: false,
+        });
+        clusterersRef.current.set(typeSlug, clusterer);
+        map.geoObjects.add(clusterer);
+      }
+      return clusterer;
+    };
+
+    const visibleNewPlacemarksByType = new Map<string, any[]>();
     for (const point of nextPoints) {
       if (placemarkIdsRef.current.has(point.id)) continue;
       const placemark = createPlacemark(point);
@@ -174,15 +190,20 @@ export function FullscreenMap({
       allPlacemarksRef.current.push(placemark);
 
       if (!activeFilterRef.current || point.objectType.slug === activeFilterRef.current) {
-        visibleNewPlacemarks.push(placemark);
+        if (!visibleNewPlacemarksByType.has(point.objectType.slug)) {
+          visibleNewPlacemarksByType.set(point.objectType.slug, []);
+        }
+        visibleNewPlacemarksByType.get(point.objectType.slug)!.push(placemark);
       }
     }
 
-    if (visibleNewPlacemarks.length === 0) return;
-    clusterer.add(visibleNewPlacemarks);
+    if (visibleNewPlacemarksByType.size === 0) return;
+    visibleNewPlacemarksByType.forEach((placemarks, typeSlug) => {
+      getClusterer(typeSlug).add(placemarks);
+    });
 
     if (!boundsWereFitRef.current) {
-      const bounds = clusterer.getBounds();
+      const bounds = getPointsBounds(mapPointsRef.current);
       if (bounds) {
         map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
         boundsWereFitRef.current = true;
@@ -224,17 +245,7 @@ export function FullscreenMap({
 
     map.behaviors.enable("scrollZoom");
 
-    const clusterer = new window.ymaps.Clusterer({
-      preset: "islands#invertedDarkGreenClusterIcons",
-      groupByCoordinates: false,
-      clusterDisableClickZoom: false,
-      clusterHideIconOnBalloonOpen: false,
-      geoObjectHideIconOnBalloonOpen: false,
-    });
-
-    map.geoObjects.add(clusterer);
     mapRef.current = map;
-    clustererRef.current = clusterer;
     addPointsToMap(currentPoints);
   }, [addPointsToMap]);
 
@@ -245,7 +256,7 @@ export function FullscreenMap({
         mapRef.current.destroy();
         mapRef.current = null;
       }
-      clustererRef.current = null;
+      clusterersRef.current = new Map();
       allPlacemarksRef.current = [];
       placemarkIdsRef.current = new Set();
       boundsWereFitRef.current = false;
@@ -259,19 +270,33 @@ export function FullscreenMap({
 
   useEffect(() => {
     activeFilterRef.current = activeFilter;
-    if (!mapRef.current || !clustererRef.current) return;
+    if (!mapRef.current) return;
     const map = mapRef.current;
-    const clusterer = clustererRef.current;
 
-    clusterer.removeAll();
+    clusterersRef.current.forEach((clusterer) => clusterer.removeAll());
 
     const visiblePlacemarks = activeFilter
       ? allPlacemarksRef.current.filter((pm: any) => pm.__typeSlug === activeFilter)
       : allPlacemarksRef.current;
-    clusterer.add(visiblePlacemarks);
+
+    const visiblePlacemarksByType = new Map<string, any[]>();
+    for (const placemark of visiblePlacemarks) {
+      const typeSlug = placemark.__typeSlug || "default";
+      if (!visiblePlacemarksByType.has(typeSlug)) {
+        visiblePlacemarksByType.set(typeSlug, []);
+      }
+      visiblePlacemarksByType.get(typeSlug)!.push(placemark);
+    }
+    visiblePlacemarksByType.forEach((placemarks, typeSlug) => {
+      const clusterer = clusterersRef.current.get(typeSlug);
+      if (clusterer) clusterer.add(placemarks);
+    });
 
     if (visiblePlacemarks.length > 0) {
-      map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
+      const visiblePointIds = new Set(visiblePlacemarks.map((pm: any) => pm.__pointId));
+      const visiblePoints = mapPointsRef.current.filter((point) => visiblePointIds.has(point.id));
+      const bounds = getPointsBounds(visiblePoints);
+      if (bounds) map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
     }
   }, [activeFilter]);
 

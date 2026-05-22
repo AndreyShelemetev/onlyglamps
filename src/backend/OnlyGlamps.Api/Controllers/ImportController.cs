@@ -16,11 +16,13 @@ public class ImportController : ControllerBase
 {
     private readonly ImportService _import;
     private readonly GlampingsRfCrawler _crawler;
+    private readonly MirturbazCrawler _mirturbazCrawler;
 
-    public ImportController(ImportService import, GlampingsRfCrawler crawler)
+    public ImportController(ImportService import, GlampingsRfCrawler crawler, MirturbazCrawler mirturbazCrawler)
     {
         _import = import;
         _crawler = crawler;
+        _mirturbazCrawler = mirturbazCrawler;
     }
 
     public class ImportObjectDto
@@ -151,6 +153,45 @@ public class ImportController : ControllerBase
         try
         {
             var result = await _crawler.CrawlAsync(
+                offset: Math.Max(0, dto.Offset),
+                limit: Math.Clamp(dto.Limit, 1, 2000),
+                dryRun: dto.DryRun,
+                maxPerRegion: dto.MaxPerRegion is > 0 ? dto.MaxPerRegion : null,
+                delayMs: Math.Clamp(dto.DelayMs ?? 1500, 1000, 15000),
+                ct);
+            return Ok(new
+            {
+                found = result.Found,
+                imported = result.Imported,
+                duplicates = result.Duplicates,
+                skipped = result.Skipped,
+                errors = result.Errors,
+                samples = result.Samples,
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = "upstream fetch failed", detail = ex.Message });
+        }
+        catch (TaskCanceledException ex)
+        {
+            return StatusCode(504, new { error = "upstream timeout", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Запускает crawler mirturbaz.ru/russia (sitemap → парсинг карточек → ImportService).
+    /// Объекты создаются как Draft. По умолчанию dryRun=true (ничего не пишем).
+    /// Лимит карточек на запрос: 1..2000. Можно ограничить выборку по регионам
+    /// (например, MaxPerRegion=3) и задать вежливую задержку DelayMs.
+    /// </summary>
+    [HttpPost("crawl/mirturbaz")]
+    public async Task<IActionResult> CrawlMirturbaz([FromBody] CrawlRequestDto? dto, CancellationToken ct)
+    {
+        dto ??= new CrawlRequestDto();
+        try
+        {
+            var result = await _mirturbazCrawler.CrawlAsync(
                 offset: Math.Max(0, dto.Offset),
                 limit: Math.Clamp(dto.Limit, 1, 2000),
                 dryRun: dto.DryRun,

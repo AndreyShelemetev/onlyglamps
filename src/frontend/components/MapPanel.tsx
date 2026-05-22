@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import type { MapPoint } from "@/lib/api";
+import { getMarkerPreset, makeTypeClusterer } from "@/lib/map-style";
 
 declare global {
   interface Window {
@@ -12,6 +13,16 @@ declare global {
 let scriptLoading = false;
 let scriptLoaded = false;
 const callbacks: (() => void)[] = [];
+
+function getPointsBounds(points: MapPoint[]) {
+  if (points.length === 0) return null;
+  const lats = points.map((point) => point.latitude);
+  const lons = points.map((point) => point.longitude);
+  return [
+    [Math.min(...lats), Math.min(...lons)],
+    [Math.max(...lats), Math.max(...lons)],
+  ];
+}
 
 function loadYmaps(cb: () => void) {
   if (scriptLoaded && window.ymaps) {
@@ -35,15 +46,6 @@ function loadYmaps(cb: () => void) {
   document.head.appendChild(script);
 }
 
-const typeColors: Record<string, string> = {
-  glempingi: "islands#darkGreenDotIcon",
-  "gostevye-doma": "islands#blueDotIcon",
-  bani: "islands#redDotIcon",
-  kottedzhi: "islands#orangeDotIcon",
-  "bazy-otdykha": "islands#violetDotIcon",
-  "park-oteli": "islands#darkOrangeDotIcon",
-};
-
 export function MapPanel({ points, regionName }: { points: MapPoint[]; regionName?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -63,14 +65,24 @@ export function MapPanel({ points, regionName }: { points: MapPoint[]; regionNam
       controls: ["zoomControl", "geolocationControl"],
     });
     map.behaviors.enable("scrollZoom");
-    const clusterer = new window.ymaps.Clusterer({
-      preset: "islands#invertedDarkGreenClusterIcons",
-      groupByCoordinates: false,
-      clusterDisableClickZoom: false,
-      clusterHideIconOnBalloonOpen: false,
-      geoObjectHideIconOnBalloonOpen: false,
-    });
-    const placemarks: any[] = [];
+    const clusterers = new Map<string, any>();
+    const placemarksByType = new Map<string, any[]>();
+
+    const getClusterer = (typeSlug: string) => {
+      let clusterer = clusterers.get(typeSlug);
+      if (!clusterer) {
+        clusterer = makeTypeClusterer(window.ymaps, typeSlug, {
+          groupByCoordinates: false,
+          clusterDisableClickZoom: false,
+          clusterHideIconOnBalloonOpen: false,
+          geoObjectHideIconOnBalloonOpen: false,
+        });
+        clusterers.set(typeSlug, clusterer);
+        map.geoObjects.add(clusterer);
+      }
+      return clusterer;
+    };
+
     points.forEach((point) => {
       const balloonContent = `
         <div style=\"min-width:180px;max-width:240px;\">
@@ -85,15 +97,20 @@ export function MapPanel({ points, regionName }: { points: MapPoint[]; regionNam
           hintContent: point.name,
         },
         {
-          preset: typeColors[point.objectType.slug] || "islands#blueDotIcon",
+          preset: getMarkerPreset(point.objectType.slug),
         }
       );
-      placemarks.push(placemark);
+      (placemark as any).__typeSlug = point.objectType.slug;
+      if (!placemarksByType.has(point.objectType.slug)) {
+        placemarksByType.set(point.objectType.slug, []);
+      }
+      placemarksByType.get(point.objectType.slug)!.push(placemark);
     });
-    clusterer.add(placemarks);
-    map.geoObjects.add(clusterer);
+    placemarksByType.forEach((placemarks, typeSlug) => {
+      getClusterer(typeSlug).add(placemarks);
+    });
     if (points.length > 0) {
-      map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
+      map.setBounds(getPointsBounds(points), { checkZoomRange: true, zoomMargin: 40 });
     }
     mapRef.current = map;
   }, [points]);
