@@ -1,7 +1,7 @@
 import { fetchObjects } from "@/lib/api";
 
 const BASE_URL = "https://onlyglamps.ru";
-const SITEMAP_PAGE_SIZE = 5000;
+const SITEMAP_PAGE_SIZE = 100;
 
 function getPageFromRequest(request: Request): number {
   const { searchParams } = new URL(request.url);

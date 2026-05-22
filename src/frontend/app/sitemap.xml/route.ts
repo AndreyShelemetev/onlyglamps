@@ -1,7 +1,7 @@
 import { fetchArticles, fetchObjects } from "@/lib/api";
 
 const BASE_URL = "https://onlyglamps.ru";
-const SITEMAP_PAGE_SIZE = 5000;
+const SITEMAP_PAGE_SIZE = 100;
 
 export async function GET() {
   const [objectsMeta, articlesMeta] = await Promise.all([
