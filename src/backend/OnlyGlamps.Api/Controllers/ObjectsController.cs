@@ -162,6 +162,7 @@ public class ObjectsController : ControllerBase
                 o.Slug,
                 o.ShortDescription,
                 o.Capacity,
+                o.UpdatedAt,
                 ObjectType = new { o.ObjectType.Name, o.ObjectType.Slug },
                 Region = new { o.Region.Name, o.Region.Slug },
                 CityOrDistrict = new { o.CityOrDistrict.Name, o.CityOrDistrict.Slug },

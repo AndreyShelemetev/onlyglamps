@@ -23,6 +23,7 @@ builder.Services.AddSingleton<StorageService>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddHttpClient<GlampingsRfCrawler>();
 builder.Services.AddHttpClient<MirturbazCrawler>();
+builder.Services.AddHttpClient<VsaunahCrawler>();
 
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "onlyglamps-dev-jwt-secret-key-min-32-chars!!";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

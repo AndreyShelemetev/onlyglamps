@@ -46,7 +46,9 @@ public class ImportService
         decimal? PriceFrom,
         IReadOnlyList<string>? PhotoUrls = null,
         string? FullDescription = null,
-        IReadOnlyList<AmenityRef>? ExtraAmenities = null);
+        IReadOnlyList<AmenityRef>? ExtraAmenities = null,
+        string? PriceUnit = null,
+        string? ContactPhone = null);
 
     public record ImportResult(bool Created, int ObjectId, string Slug, string? DuplicateReason);
 
@@ -196,6 +198,7 @@ public class ImportService
             SmokingAllowed = req.SmokingAllowed,
             EventsAllowed = req.EventsAllowed,
             Status = ObjectStatus.Draft,
+            ModerationComment = BuildModerationComment(req),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
@@ -259,12 +262,15 @@ public class ImportService
         // "От" tariff
         if (req.PriceFrom is > 0)
         {
+            var isHourly = string.Equals(req.PriceUnit, "hour", StringComparison.OrdinalIgnoreCase);
             _db.Tariffs.Add(new Tariff
             {
                 ObjectId = obj.Id,
-                Name = "Минимальная цена",
+                Name = isHourly ? "Цена за час" : "Минимальная цена",
                 Price = req.PriceFrom.Value,
-                Description = "Цена «от», импортирована из источника. Уточните у владельца.",
+                Description = isHourly
+                    ? "Цена за час «от», импортирована из источника. Уточните у владельца."
+                    : "Цена «от», импортирована из источника. Уточните у владельца.",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
             });
@@ -307,6 +313,14 @@ public class ImportService
         await _db.SaveChangesAsync();
 
         return new ImportResult(true, obj.Id, obj.Slug, null);
+    }
+
+    private static string? BuildModerationComment(ImportRequest req)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(req.ContactPhone))
+            parts.Add($"Телефон источника: {req.ContactPhone.Trim()}");
+        return parts.Count > 0 ? string.Join("\n", parts) : null;
     }
 
     private async Task<int> EnsureSystemOwnerAsync()

@@ -17,6 +17,7 @@ export interface ObjectListItem {
   mainPhotoUrl: string | null;
   mainPhotoAlt: string | null;
   amenities: string[];
+  updatedAt: string;
 }
 
 export interface ObjectsResponse {

@@ -17,12 +17,14 @@ public class ImportController : ControllerBase
     private readonly ImportService _import;
     private readonly GlampingsRfCrawler _crawler;
     private readonly MirturbazCrawler _mirturbazCrawler;
+    private readonly VsaunahCrawler _vsaunahCrawler;
 
-    public ImportController(ImportService import, GlampingsRfCrawler crawler, MirturbazCrawler mirturbazCrawler)
+    public ImportController(ImportService import, GlampingsRfCrawler crawler, MirturbazCrawler mirturbazCrawler, VsaunahCrawler vsaunahCrawler)
     {
         _import = import;
         _crawler = crawler;
         _mirturbazCrawler = mirturbazCrawler;
+        _vsaunahCrawler = vsaunahCrawler;
     }
 
     public class ImportObjectDto
@@ -192,6 +194,45 @@ public class ImportController : ControllerBase
         try
         {
             var result = await _mirturbazCrawler.CrawlAsync(
+                offset: Math.Max(0, dto.Offset),
+                limit: Math.Clamp(dto.Limit, 1, 2000),
+                dryRun: dto.DryRun,
+                maxPerRegion: dto.MaxPerRegion is > 0 ? dto.MaxPerRegion : null,
+                delayMs: Math.Clamp(dto.DelayMs ?? 1500, 1000, 15000),
+                ct);
+            return Ok(new
+            {
+                found = result.Found,
+                imported = result.Imported,
+                duplicates = result.Duplicates,
+                skipped = result.Skipped,
+                errors = result.Errors,
+                samples = result.Samples,
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = "upstream fetch failed", detail = ex.Message });
+        }
+        catch (TaskCanceledException ex)
+        {
+            return StatusCode(504, new { error = "upstream timeout", detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Запускает crawler vsaunah.ru (сауны/бани Москвы) → ImportService.
+    /// Регион/город/тип фиксированы: moskovskaya-oblast / moskva / bani.
+    /// Почасовая цена НЕ импортируется. Объекты создаются как Draft.
+    /// По умолчанию dryRun=true (ничего не пишем). Лимит карточек: 1..2000.
+    /// </summary>
+    [HttpPost("crawl/vsaunah")]
+    public async Task<IActionResult> CrawlVsaunah([FromBody] CrawlRequestDto? dto, CancellationToken ct)
+    {
+        dto ??= new CrawlRequestDto();
+        try
+        {
+            var result = await _vsaunahCrawler.CrawlAsync(
                 offset: Math.Max(0, dto.Offset),
                 limit: Math.Clamp(dto.Limit, 1, 2000),
                 dryRun: dto.DryRun,

@@ -1,7 +1,8 @@
 import { fetchArticles, fetchObjects } from "@/lib/api";
 
 const BASE_URL = "https://onlyglamps.ru";
-const SITEMAP_PAGE_SIZE = 100;
+const OBJECTS_PAGE_SIZE = 100;
+const BLOG_PAGE_SIZE = 5000;
 
 export async function GET() {
   const [objectsMeta, articlesMeta] = await Promise.all([
@@ -9,8 +10,8 @@ export async function GET() {
     fetchArticles(1, 1),
   ]);
 
-  const objectPages = Math.max(1, Math.ceil((objectsMeta.total || 0) / SITEMAP_PAGE_SIZE));
-  const articlePages = Math.max(1, Math.ceil((articlesMeta.total || 0) / SITEMAP_PAGE_SIZE));
+  const objectPages = Math.max(1, Math.ceil((objectsMeta.total || 0) / OBJECTS_PAGE_SIZE));
+  const articlePages = Math.max(1, Math.ceil((articlesMeta.total || 0) / BLOG_PAGE_SIZE));
 
   const sitemaps = [
     `${BASE_URL}/sitemap-main.xml`,

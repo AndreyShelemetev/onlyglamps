@@ -25,10 +25,10 @@ export async function GET(request: Request) {
   });
 
   const urls = objects.map((obj) => ({
-    loc: `${BASE_URL}/${obj.region.slug}/${obj.cityOrDistrict.slug}/${obj.slug}/`,
+    loc: `${BASE_URL}/${obj.region.slug}/${obj.cityOrDistrict.slug}/${obj.slug}-${obj.id}/`,
     changefreq: "weekly",
     priority: "0.9",
-    lastmod: new Date().toISOString(),
+    lastmod: new Date(obj.updatedAt).toISOString(),
   }));
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
