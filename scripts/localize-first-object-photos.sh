@@ -121,11 +121,11 @@ WITH first_photos AS (
   SELECT DISTINCT ON (p."ObjectId")
     o."Id" AS object_id,
     p."Id" AS photo_id,
-    replace(replace(o."Name", E'\t', ' '), E'\n', ' ') AS object_name,
-    replace(replace(COALESCE(p."Alt", ''), E'\t', ' '), E'\n', ' ') AS alt,
+    COALESCE(NULLIF(replace(replace(o."Name", E'\t', ' '), E'\n', ' '), ''), '-') AS object_name,
+    COALESCE(NULLIF(replace(replace(COALESCE(p."Alt", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS alt,
     p."Url" AS photo_url,
-    COALESCE(sl."SourceName", '') AS source_name,
-    COALESCE(sl."SourceUrl", '') AS source_url
+    COALESCE(NULLIF(replace(replace(COALESCE(sl."SourceName", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS source_name,
+    COALESCE(NULLIF(replace(replace(COALESCE(sl."SourceUrl", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS source_url
   FROM "ObjectPhotos" p
   JOIN "GlampingObjects" o ON o."Id" = p."ObjectId"
   LEFT JOIN "SourceLinks" sl ON sl."ObjectId" = o."Id"
