@@ -130,26 +130,27 @@ if [[ -n "$SOURCE_NAME" ]]; then
 fi
 
 read -r -d '' SELECT_SQL <<SQL || true
-WITH first_photos AS (
-  SELECT DISTINCT ON (p."ObjectId")
+WITH ordered_photos AS (
+  SELECT
     o."Id" AS object_id,
     p."Id" AS photo_id,
     COALESCE(NULLIF(replace(replace(o."Name", E'\t', ' '), E'\n', ' '), ''), '-') AS object_name,
     COALESCE(NULLIF(replace(replace(COALESCE(p."Alt", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS alt,
     p."Url" AS photo_url,
     COALESCE(NULLIF(replace(replace(COALESCE(sl."SourceName", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS source_name,
-    COALESCE(NULLIF(replace(replace(COALESCE(sl."SourceUrl", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS source_url
+    COALESCE(NULLIF(replace(replace(COALESCE(sl."SourceUrl", ''), E'\t', ' '), E'\n', ' '), ''), '-') AS source_url,
+    row_number() OVER (PARTITION BY p."ObjectId" ORDER BY p."SortOrder", p."Id") AS photo_rank
   FROM "ObjectPhotos" p
   JOIN "GlampingObjects" o ON o."Id" = p."ObjectId"
   LEFT JOIN "SourceLinks" sl ON sl."ObjectId" = o."Id"
-  WHERE p."Url" ~* '^https?://'
-    AND p."Url" NOT LIKE '/storage/%'
-    AND $STATUS_SQL
+  WHERE $STATUS_SQL
     AND $SOURCE_SQL
-  ORDER BY p."ObjectId", p."SortOrder", p."Id"
 )
 SELECT object_id, photo_id, object_name, alt, photo_url, source_name, source_url
-FROM first_photos
+FROM ordered_photos
+WHERE photo_rank = 1
+  AND photo_url ~* '^https?://'
+  AND photo_url NOT LIKE '/storage/%'
 ORDER BY object_id
 LIMIT $LIMIT;
 SQL
