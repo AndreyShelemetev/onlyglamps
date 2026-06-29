@@ -18,6 +18,7 @@ REALESRGAN_BIN="${REALESRGAN_BIN:-realesrgan-ncnn-vulkan}"
 REALESRGAN_MODEL="${REALESRGAN_MODEL:-realesrgan-x4plus}"
 REALESRGAN_SCALE="${REALESRGAN_SCALE:-2}"
 REALESRGAN_TILE_SIZE="${REALESRGAN_TILE_SIZE:-0}"
+ON_DOWNLOAD_ERROR="${ON_DOWNLOAD_ERROR:-skip}"
 DRY_RUN="${DRY_RUN:-0}"
 
 usage() {
@@ -31,6 +32,7 @@ Environment:
   SOURCE_NAME       Optional SourceLinks.SourceName filter, for example "Мир Турбаз".
   DRY_RUN           1 prints selected photos without downloading or updating.
   PROCESSOR         realesrgan or imagemagick. Default: realesrgan.
+  ON_DOWNLOAD_ERROR fail or skip. skip clears the broken first photo URL. Default: skip.
   REALESRGAN_BIN    Real-ESRGAN executable. Default: realesrgan-ncnn-vulkan.
   REALESRGAN_MODEL  Real-ESRGAN model name. Default: realesrgan-x4plus.
   REALESRGAN_SCALE  Real-ESRGAN scale. Default: 2.
@@ -65,6 +67,14 @@ case "$PROCESSOR" in
   realesrgan|imagemagick) ;;
   *)
     echo "Unsupported PROCESSOR=$PROCESSOR. Use realesrgan or imagemagick." >&2
+    exit 2
+    ;;
+esac
+
+case "$ON_DOWNLOAD_ERROR" in
+  fail|skip) ;;
+  *)
+    echo "Unsupported ON_DOWNLOAD_ERROR=$ON_DOWNLOAD_ERROR. Use fail or skip." >&2
     exit 2
     ;;
 esac
@@ -199,6 +209,11 @@ update_photo_url() {
   psql_query "UPDATE \"ObjectPhotos\" SET \"Url\" = '$escaped_url' WHERE \"Id\" = $photo_id;" >/dev/null
 }
 
+clear_photo_url() {
+  local photo_id="$1"
+  psql_query "UPDATE \"ObjectPhotos\" SET \"Url\" = '' WHERE \"Id\" = $photo_id;" >/dev/null
+}
+
 printf "%s\n" "$rows" | while IFS=$'\t' read -r object_id photo_id object_name alt old_url source_name source_url; do
   object_dir="$WORK_DIR/object-$object_id-photo-$photo_id"
   mkdir -p "$object_dir"
@@ -211,7 +226,16 @@ printf "%s\n" "$rows" | while IFS=$'\t' read -r object_id photo_id object_name a
   thumb_file="$object_dir/thumb-${THUMB_WIDTH}.webp"
 
   echo "Processing object #$object_id photo #$photo_id"
-  curl --fail --location --silent --show-error --max-time 45 --retry 2 "$old_url" --output "$raw_file"
+  if ! curl --fail --location --silent --show-error --max-time 45 --retry 2 "$old_url" --output "$raw_file"; then
+    if [[ "$ON_DOWNLOAD_ERROR" == "skip" ]]; then
+      echo "Skipping object #$object_id photo #$photo_id: download failed"
+      clear_photo_url "$photo_id"
+      printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+        "$object_id" "$photo_id" "$object_name" "$alt" "$old_url" "$source_name" "$source_url" "DOWNLOAD_FAILED" >> "$MANIFEST"
+      continue
+    fi
+    exit 1
+  fi
 
   "$MAGICK_BIN" "$raw_file" -auto-orient -strip "$normalized_file"
   if [[ "$PROCESSOR" == "realesrgan" ]]; then
