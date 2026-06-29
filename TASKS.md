@@ -7,6 +7,7 @@
 - [x] Проверена сборка frontend: `npm run build`
 - [x] Проверен запуск Docker Compose: `docker compose up -d --build`, сервисы стартовали через nginx на `http://localhost/`, backend health отвечает `ok`
 - [x] Добавлен операторский скрипт `scripts/localize-first-object-photos.sh` для локализации первой внешней фотографии объекта: dry-run выборка из БД, обработка через Real-ESRGAN binary, генерация WebP-вариантов и загрузка в MinIO без изменения модели данных
+- [x] Для серверной обработки фото добавлены стабильный режим `PROCESSOR=imagemagick`, пропуск битых внешних URL через `ON_DOWNLOAD_ERROR=skip` и точечная обработка объекта через `OBJECT_ID`
 - [x] Ускорена загрузка первых фото в каталоге: первая карточка получает `fetchPriority="high"`, первые 3 карточки грузятся `eager`, остальные остаются `lazy`
 
 ## Следующая задача

@@ -4,6 +4,7 @@ set -euo pipefail
 LIMIT="${LIMIT:-10}"
 STATUS="${STATUS:-Published}"
 SOURCE_NAME="${SOURCE_NAME:-}"
+OBJECT_ID="${OBJECT_ID:-}"
 DB_SERVICE="${DB_SERVICE:-db}"
 STORAGE_SERVICE="${STORAGE_SERVICE:-storage}"
 BUCKET="${BUCKET:-onlyglamps}"
@@ -30,6 +31,7 @@ Environment:
   LIMIT             Number of object first photos to process. Default: 10.
   STATUS            Object status filter: Published, Draft, Archived, or all. Default: Published.
   SOURCE_NAME       Optional SourceLinks.SourceName filter, for example "Мир Турбаз".
+  OBJECT_ID         Optional exact GlampingObjects.Id filter for a single object.
   DRY_RUN           1 prints selected photos without downloading or updating.
   PROCESSOR         realesrgan or imagemagick. Default: realesrgan.
   ON_DOWNLOAD_ERROR fail or skip. skip clears the broken first photo URL. Default: skip.
@@ -139,6 +141,15 @@ if [[ -n "$SOURCE_NAME" ]]; then
   SOURCE_SQL="sl.\"SourceName\" = '$(sql_escape "$SOURCE_NAME")'"
 fi
 
+OBJECT_SQL="TRUE"
+if [[ -n "$OBJECT_ID" ]]; then
+  if [[ ! "$OBJECT_ID" =~ ^[0-9]+$ ]]; then
+    echo "OBJECT_ID must be a positive integer." >&2
+    exit 2
+  fi
+  OBJECT_SQL="o.\"Id\" = $OBJECT_ID"
+fi
+
 read -r -d '' SELECT_SQL <<SQL || true
 WITH ordered_photos AS (
   SELECT
@@ -155,6 +166,7 @@ WITH ordered_photos AS (
   LEFT JOIN "SourceLinks" sl ON sl."ObjectId" = o."Id"
   WHERE $STATUS_SQL
     AND $SOURCE_SQL
+    AND $OBJECT_SQL
 )
 SELECT object_id, photo_id, object_name, alt, photo_url, source_name, source_url
 FROM ordered_photos
