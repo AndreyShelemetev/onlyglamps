@@ -13,9 +13,11 @@ FULL_WIDTH="${FULL_WIDTH:-1600}"
 THUMB_WIDTH="${THUMB_WIDTH:-480}"
 WEBP_QUALITY="${WEBP_QUALITY:-78}"
 MAGICK_BIN="${MAGICK_BIN:-}"
+PROCESSOR="${PROCESSOR:-realesrgan}"
 REALESRGAN_BIN="${REALESRGAN_BIN:-realesrgan-ncnn-vulkan}"
 REALESRGAN_MODEL="${REALESRGAN_MODEL:-realesrgan-x4plus}"
 REALESRGAN_SCALE="${REALESRGAN_SCALE:-2}"
+REALESRGAN_TILE_SIZE="${REALESRGAN_TILE_SIZE:-0}"
 DRY_RUN="${DRY_RUN:-0}"
 
 usage() {
@@ -28,9 +30,12 @@ Environment:
   STATUS            Object status filter: Published, Draft, Archived, or all. Default: Published.
   SOURCE_NAME       Optional SourceLinks.SourceName filter, for example "Мир Турбаз".
   DRY_RUN           1 prints selected photos without downloading or updating.
+  PROCESSOR         realesrgan or imagemagick. Default: realesrgan.
   REALESRGAN_BIN    Real-ESRGAN executable. Default: realesrgan-ncnn-vulkan.
   REALESRGAN_MODEL  Real-ESRGAN model name. Default: realesrgan-x4plus.
   REALESRGAN_SCALE  Real-ESRGAN scale. Default: 2.
+  REALESRGAN_TILE_SIZE
+                    Real-ESRGAN tile size. 0 means auto. Default: 0.
   MAIN_WIDTH        WebP width saved back into ObjectPhotos.Url. Default: 960.
   FULL_WIDTH        Larger archived WebP width. Default: 1600.
   THUMB_WIDTH       Small archived WebP width. Default: 480.
@@ -52,6 +57,14 @@ case "$STATUS" in
   Published|Draft|Archived|all) ;;
   *)
     echo "Unsupported STATUS=$STATUS. Use Published, Draft, Archived, or all." >&2
+    exit 2
+    ;;
+esac
+
+case "$PROCESSOR" in
+  realesrgan|imagemagick) ;;
+  *)
+    echo "Unsupported PROCESSOR=$PROCESSOR. Use realesrgan or imagemagick." >&2
     exit 2
     ;;
 esac
@@ -86,7 +99,7 @@ if [[ "$DRY_RUN" != "1" ]]; then
     echo "Missing ImageMagick command. Install ImageMagick or set MAGICK_BIN." >&2
     exit 2
   fi
-  if ! command -v "$REALESRGAN_BIN" >/dev/null 2>&1 && [[ ! -x "$REALESRGAN_BIN" ]]; then
+  if [[ "$PROCESSOR" == "realesrgan" ]] && ! command -v "$REALESRGAN_BIN" >/dev/null 2>&1 && [[ ! -x "$REALESRGAN_BIN" ]]; then
     echo "Missing Real-ESRGAN executable: $REALESRGAN_BIN" >&2
     echo "Set REALESRGAN_BIN to the realesrgan-ncnn-vulkan binary." >&2
     exit 2
@@ -200,7 +213,16 @@ printf "%s\n" "$rows" | while IFS=$'\t' read -r object_id photo_id object_name a
   curl --fail --location --silent --show-error --max-time 45 --retry 2 "$old_url" --output "$raw_file"
 
   "$MAGICK_BIN" "$raw_file" -auto-orient -strip "$normalized_file"
-  "$REALESRGAN_BIN" -i "$normalized_file" -o "$enhanced_file" -n "$REALESRGAN_MODEL" -s "$REALESRGAN_SCALE" >/dev/null
+  if [[ "$PROCESSOR" == "realesrgan" ]]; then
+    "$REALESRGAN_BIN" \
+      -i "$normalized_file" \
+      -o "$enhanced_file" \
+      -n "$REALESRGAN_MODEL" \
+      -s "$REALESRGAN_SCALE" \
+      -t "$REALESRGAN_TILE_SIZE" >/dev/null
+  else
+    enhanced_file="$normalized_file"
+  fi
 
   "$MAGICK_BIN" "$enhanced_file" -auto-orient -strip -resize "${MAIN_WIDTH}x${MAIN_WIDTH}>" \
     -quality "$WEBP_QUALITY" -define webp:method=6 "$main_file"
