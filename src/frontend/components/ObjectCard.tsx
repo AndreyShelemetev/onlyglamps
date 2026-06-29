@@ -40,10 +40,14 @@ export function ObjectCard({
   obj,
   basePath,
   showSourceButton = true,
+  imageLoading = "lazy",
+  imageFetchPriority = "auto",
 }: {
   obj: ObjectListItem;
   basePath?: string;
   showSourceButton?: boolean;
+  imageLoading?: "eager" | "lazy";
+  imageFetchPriority?: "high" | "low" | "auto";
 }) {
   const cardUrl = `/${obj.region.slug}/${obj.cityOrDistrict.slug}/${obj.slug}-${obj.id}/`;
   const iconAmenities = pickAmenityIcons(obj.amenities);
@@ -55,6 +59,8 @@ export function ObjectCard({
           src={obj.mainPhotoUrl || ""}
           alt={obj.mainPhotoAlt || obj.name}
           className="w-full h-48 object-cover"
+          loading={imageLoading}
+          fetchPriority={imageFetchPriority}
         />
         {obj.objectType?.name && (
           <span className="absolute top-3 left-3 text-xs bg-white/90 backdrop-blur text-primary-800 px-2 py-1 rounded-full font-medium shadow-sm">

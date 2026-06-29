@@ -24,8 +24,14 @@ export function ObjectGrid({ objects, total, basePath, emptyMessage }: Props) {
         Найдено: {total} {pluralize(total, "объект", "объекта", "объектов")}
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {objects.map((obj) => (
-          <ObjectCard key={obj.id} obj={obj} basePath={basePath} />
+        {objects.map((obj, index) => (
+          <ObjectCard
+            key={obj.id}
+            obj={obj}
+            basePath={basePath}
+            imageLoading={index < 3 ? "eager" : "lazy"}
+            imageFetchPriority={index === 0 ? "high" : "auto"}
+          />
         ))}
       </div>
     </div>

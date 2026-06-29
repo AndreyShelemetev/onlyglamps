@@ -7,9 +7,10 @@ interface Props {
   alt: string;
   className?: string;
   loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
 }
 
-export function SafeImage({ src, alt, className, loading = "lazy" }: Props) {
+export function SafeImage({ src, alt, className, loading = "lazy", fetchPriority = "auto" }: Props) {
   const [error, setError] = useState(false);
 
   if (error || !src) {
@@ -29,6 +30,8 @@ export function SafeImage({ src, alt, className, loading = "lazy" }: Props) {
       alt={alt}
       className={className}
       loading={loading}
+      decoding={loading === "eager" ? "sync" : "async"}
+      fetchPriority={fetchPriority}
       onError={() => setError(true)}
     />
   );
