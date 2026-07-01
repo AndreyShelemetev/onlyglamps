@@ -15,18 +15,34 @@ interface ImageSliderProps {
   objectName: string;
 }
 
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
 export function ImageSlider({ photos, objectName }: ImageSliderProps) {
   const [current, setCurrent] = useState(0);
   const [lightbox, setLightbox] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const preloadedUrls = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const total = photos.length;
+
+  const preloadPhoto = useCallback((url?: string | null) => {
+    if (!url || preloadedUrls.current.has(url)) return;
+    preloadedUrls.current.add(url);
+
+    const img = new window.Image();
+    img.decoding = "async";
+    (img as HTMLImageElement & { fetchPriority?: "low" }).fetchPriority = "low";
+    img.src = url;
+  }, []);
 
   const prev = useCallback(() => {
     setCurrent((c) => (c === 0 ? total - 1 : c - 1));
@@ -61,6 +77,54 @@ export function ImageSlider({ photos, objectName }: ImageSliderProps) {
     return () => document.removeEventListener("keydown", handleKey);
   }, [lightbox, prev, next]);
 
+  useEffect(() => {
+    if (total <= 1) return;
+
+    const delay = current === 0 ? 700 : 0;
+    const timer = window.setTimeout(() => {
+      preloadPhoto(photos[(current + 1) % total]?.url);
+      preloadPhoto(photos[(current - 1 + total) % total]?.url);
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [current, photos, preloadPhoto, total]);
+
+  useEffect(() => {
+    if (total <= 2) return;
+
+    const timers: number[] = [];
+    let cancelled = false;
+
+    const preloadRest = () => {
+      const urls = photos
+        .map((photo) => photo.url)
+        .filter((url, index) => url && index !== current);
+
+      Array.from(new Set(urls)).forEach((url, index) => {
+        const timer = window.setTimeout(() => {
+          if (!cancelled) preloadPhoto(url);
+        }, 1000 + index * 250);
+        timers.push(timer);
+      });
+    };
+
+    const idleWindow = window as IdleWindow;
+    const hasIdleCallback = typeof idleWindow.requestIdleCallback === "function";
+    const idleId = hasIdleCallback
+      ? idleWindow.requestIdleCallback!(preloadRest, { timeout: 3000 })
+      : window.setTimeout(preloadRest, 1500);
+
+    return () => {
+      cancelled = true;
+      timers.forEach((timer) => window.clearTimeout(timer));
+      if (hasIdleCallback && typeof idleWindow.cancelIdleCallback === "function") {
+        idleWindow.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, [current, photos, preloadPhoto, total]);
+
   if (total === 0) return null;
 
   return (
@@ -79,6 +143,7 @@ export function ImageSlider({ photos, objectName }: ImageSliderProps) {
               alt={photos[current].alt || objectName}
               className="w-full h-full object-cover"
               loading={current === 0 ? "eager" : "lazy"}
+              fetchPriority={current === 0 ? "high" : "auto"}
             />
           </div>
         </div>
