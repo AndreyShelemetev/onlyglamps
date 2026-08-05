@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "О сервисе",
   description:
     "OnlyGlamps — каталог глэмпингов, гостевых домов и бань для аренды посуточно. О нас, наша миссия и команда.",
+  alternates: { canonical: "/about/" },
 };
 
 export default function AboutPage() {

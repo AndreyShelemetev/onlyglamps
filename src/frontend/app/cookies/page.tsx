@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Политика использования cookies",
   description: "Информация об использовании файлов cookie на сервисе OnlyGlamps.",
+  alternates: { canonical: "/cookies/" },
 };
 
 export default function CookiesPage() {

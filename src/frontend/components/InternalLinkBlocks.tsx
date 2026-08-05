@@ -1,6 +1,32 @@
 import type { ObjectListItem, RegionData } from "@/lib/api";
 import { ObjectCard } from "./ObjectCard";
 
+/**
+ * Перелинковка внизу листинга. Рендерится только на чистом (индексируемом) URL —
+ * под GET-фильтром страница noindex, и раздавать с неё ссылочный вес незачем.
+ */
+export function ListingLinkBlocks({
+  regionName,
+  regionSlug,
+  glampingLinks,
+  regions,
+}: {
+  regionName: string;
+  regionSlug: string;
+  glampingLinks: ObjectListItem[];
+  regions: RegionData[];
+}) {
+  return (
+    <>
+      <ObjectLinkBlock
+        title={`Глэмпинги в регионе ${regionName}`}
+        objects={glampingLinks}
+      />
+      <RegionLinkBlock regions={regions} currentRegionSlug={regionSlug} />
+    </>
+  );
+}
+
 export function ObjectLinkBlock({
   title,
   objects,

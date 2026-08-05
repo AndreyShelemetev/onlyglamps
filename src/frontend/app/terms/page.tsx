@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Пользовательское соглашение",
   description: "Пользовательское соглашение сервиса OnlyGlamps. Условия использования платформы.",
+  alternates: { canonical: "/terms/" },
 };
 
 export default function TermsPage() {

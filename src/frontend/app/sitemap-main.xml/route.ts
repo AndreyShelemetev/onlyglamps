@@ -1,10 +1,11 @@
-const BASE_URL = "https://onlyglamps.ru";
+import { SITE_URL, buildUrlset } from "@/lib/seo";
 
 const STATIC_PAGES = [
   { path: "/", changefreq: "daily", priority: "1.0" },
+  { path: "/directions/", changefreq: "weekly", priority: "0.5" },
+  { path: "/map/", changefreq: "weekly", priority: "0.5" },
   { path: "/about/", changefreq: "monthly", priority: "0.3" },
   { path: "/contacts/", changefreq: "monthly", priority: "0.3" },
-  { path: "/directions/", changefreq: "weekly", priority: "0.5" },
   { path: "/owners/", changefreq: "monthly", priority: "0.4" },
   { path: "/privacy/", changefreq: "yearly", priority: "0.1" },
   { path: "/terms/", changefreq: "yearly", priority: "0.1" },
@@ -13,21 +14,11 @@ const STATIC_PAGES = [
 ];
 
 export async function GET() {
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${STATIC_PAGES.map(
-  (p) => `  <url>
-    <loc>${BASE_URL}${p.path}</loc>
-    <changefreq>${p.changefreq}</changefreq>
-    <priority>${p.priority}</priority>
-  </url>`
-).join("\n")}
-</urlset>`;
-
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/xml",
-      "Cache-Control": "public, max-age=3600, s-maxage=3600",
-    },
-  });
+  return buildUrlset(
+    STATIC_PAGES.map((p) => ({
+      loc: `${SITE_URL}${p.path}`,
+      changefreq: p.changefreq,
+      priority: p.priority,
+    }))
+  );
 }

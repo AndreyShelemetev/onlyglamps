@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Правила размещения объектов",
   description: "Правила размещения объектов на платформе OnlyGlamps.",
+  alternates: { canonical: "/rules/" },
 };
 
 export default function RulesPage() {

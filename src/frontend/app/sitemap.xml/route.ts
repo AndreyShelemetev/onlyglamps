@@ -1,8 +1,18 @@
 import { fetchArticles, fetchObjects } from "@/lib/api";
+import {
+  SITE_URL,
+  SITEMAP_BLOG_PAGE_SIZE,
+  SITEMAP_OBJECTS_PAGE_SIZE,
+  buildSitemapIndex,
+} from "@/lib/seo";
 
-const BASE_URL = "https://onlyglamps.ru";
-const OBJECTS_PAGE_SIZE = 100;
-const BLOG_PAGE_SIZE = 5000;
+function pagedSitemaps(name: string, totalItems: number, pageSize: number): string[] {
+  const pages = Math.max(1, Math.ceil((totalItems || 0) / pageSize));
+  return Array.from(
+    { length: pages },
+    (_, i) => `${SITE_URL}/${name}${i === 0 ? "" : `?page=${i + 1}`}`
+  );
+}
 
 export async function GET() {
   const [objectsMeta, articlesMeta] = await Promise.all([
@@ -10,27 +20,10 @@ export async function GET() {
     fetchArticles(1, 1),
   ]);
 
-  const objectPages = Math.max(1, Math.ceil((objectsMeta.total || 0) / OBJECTS_PAGE_SIZE));
-  const articlePages = Math.max(1, Math.ceil((articlesMeta.total || 0) / BLOG_PAGE_SIZE));
-
-  const sitemaps = [
-    `${BASE_URL}/sitemap-main.xml`,
-    `${BASE_URL}/sitemap-regions.xml`,
-    ...Array.from({ length: objectPages }, (_, i) => `${BASE_URL}/sitemap-objects.xml${i === 0 ? "" : `?page=${i + 1}`}`),
-    ...Array.from({ length: articlePages }, (_, i) => `${BASE_URL}/sitemap-blog.xml${i === 0 ? "" : `?page=${i + 1}`}`),
-  ];
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${sitemaps.map((s) => `  <sitemap>
-    <loc>${s}</loc>
-  </sitemap>`).join("\n")}
-</sitemapindex>`;
-
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/xml",
-      "Cache-Control": "public, max-age=3600, s-maxage=3600",
-    },
-  });
+  return buildSitemapIndex([
+    `${SITE_URL}/sitemap-main.xml`,
+    `${SITE_URL}/sitemap-regions.xml`,
+    ...pagedSitemaps("sitemap-objects.xml", objectsMeta.total, SITEMAP_OBJECTS_PAGE_SIZE),
+    ...pagedSitemaps("sitemap-blog.xml", articlesMeta.total, SITEMAP_BLOG_PAGE_SIZE),
+  ]);
 }

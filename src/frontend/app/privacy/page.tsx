@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Политика конфиденциальности",
   description: "Политика конфиденциальности сервиса OnlyGlamps. Обработка персональных данных.",
+  alternates: { canonical: "/privacy/" },
 };
 
 export default function PrivacyPage() {

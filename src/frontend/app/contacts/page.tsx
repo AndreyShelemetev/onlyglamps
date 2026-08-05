@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Контакты",
   description:
     "Контактная информация сервиса OnlyGlamps. Телефон, email, адрес офиса в Йошкар-Оле.",
+  alternates: { canonical: "/contacts/" },
 };
 
 export default function ContactsPage() {

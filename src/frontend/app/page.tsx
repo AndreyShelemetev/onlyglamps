@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { fetchObjects, fetchRegions, fetchObjectTypes } from "@/lib/api";
 import { ObjectCard } from "@/components/ObjectCard";
 import { HeroSearch } from "@/components/HeroSearch";
+import { HOME_INTENTS } from "@/lib/intents";
 
 export const metadata: Metadata = {
   title: "OnlyGlamps — глэмпинги, гостевые дома и бани посуточно",
@@ -24,15 +25,6 @@ export default async function HomePage() {
     regions.find((r) => r.slug === "moskovskaya-oblast" || /москов/i.test(r.name)) ||
     regions[0] ||
     null;
-
-  const intentIdeas: { label: string; emoji: string; param: string }[] = [
-    { label: "С горячим чаном", emoji: "♨️", param: "chan=1" },
-    { label: "С баней", emoji: "🧖", param: "sauna=1" },
-    { label: "У воды", emoji: "💧", param: "u-vody=1" },
-    { label: "В лесу", emoji: "🌲", param: "u-lesa=1" },
-    { label: "Можно с питомцами", emoji: "🐾", param: "s-pitomtsami=1" },
-    { label: "С мангалом", emoji: "🔥", param: "mangal=1" },
-  ];
 
   return (
     <div>
@@ -104,7 +96,7 @@ export default async function HomePage() {
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {intentIdeas.map((idea) => (
+            {HOME_INTENTS.map((idea) => (
               <a
                 key={idea.param}
                 href={`/${anchorRegion.slug}/?${idea.param}`}

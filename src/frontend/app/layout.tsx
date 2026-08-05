@@ -4,9 +4,10 @@ import { AuthProvider } from "@/lib/auth";
 import { HeaderAuth } from "@/components/HeaderAuth";
 import { HeaderNav, MobileMenu } from "@/components/HeaderNav";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://onlyglamps.ru"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "OnlyGlamps — глэмпинги, гостевые дома и бани посуточно",
     template: "%s | OnlyGlamps",

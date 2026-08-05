@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Сдать объект",
   description:
     "Разместите свой глэмпинг, гостевой дом или баню на OnlyGlamps. Бесплатное размещение, привлечение гостей.",
+  alternates: { canonical: "/owners/" },
 };
 
 export default function OwnersPage() {

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     "Статьи, обзоры и путеводители по лучшим местам для загородного отдыха в России. Глэмпинги, гостевые дома, бани и достопримечательности.",
   alternates: {
-    canonical: "https://onlyglamps.ru/blog/",
+    canonical: "/blog/",
   },
 };
 

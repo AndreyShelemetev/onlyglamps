@@ -1,3 +1,5 @@
+import { SITE_URL } from "@/lib/seo";
+
 interface BreadcrumbItem {
   name: string;
   url?: string;
@@ -11,7 +13,7 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
       "@type": "ListItem",
       position: i + 1,
       name: item.name,
-      ...(item.url ? { item: `https://onlyglamps.ru${item.url}` } : {}),
+      ...(item.url ? { item: `${SITE_URL}${item.url}` } : {}),
     })),
   };
 

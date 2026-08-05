@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${article.title} — OnlyGlamps`,
     description: article.description,
     alternates: {
-      canonical: `https://onlyglamps.ru/blog/${params.slug}/`,
+      canonical: `/blog/${params.slug}/`,
     },
     openGraph: {
       title: article.title,
