@@ -37,3 +37,9 @@ deploy/imports/*.sql
 
 # MinIO data
 minio-data/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
+# Local DB export / one-off migration scripts
+tmp_export/
