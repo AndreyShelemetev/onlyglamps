@@ -53,43 +53,59 @@ export function ObjectCard({
   const iconAmenities = pickAmenityIcons(obj.amenities);
 
   return (
-    <article className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition bg-white flex flex-col">
-      <a href={cardUrl} className="block relative">
-        <SafeImage
-          src={obj.mainPhotoUrl || ""}
-          alt={obj.mainPhotoAlt || obj.name}
-          className="w-full h-48 object-cover"
-          loading={imageLoading}
-          fetchPriority={imageFetchPriority}
-        />
+    <article className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow duration-150 bg-white flex flex-col">
+      {/* Бейджи вынесены из ссылки: внутри неё их текст приклеивался
+          к имени ссылки («Глэмпинг Лесная сказка Глэмпинг ★ 4.8 · 12»). */}
+      <div className="relative">
+        <a href={cardUrl} className="block" aria-hidden="true" tabIndex={-1}>
+          <SafeImage
+            src={obj.mainPhotoUrl || ""}
+            alt={obj.mainPhotoAlt || obj.name}
+            className="w-full h-48 object-cover"
+            loading={imageLoading}
+            fetchPriority={imageFetchPriority}
+          />
+        </a>
         {obj.objectType?.name && (
           <span className="absolute top-3 left-3 text-xs bg-white/90 backdrop-blur text-primary-800 px-2 py-1 rounded-full font-medium shadow-sm">
             {obj.objectType.name}
           </span>
         )}
         {obj.rating != null && (
-          <span className="absolute top-3 right-3 text-xs bg-white/90 backdrop-blur text-gray-900 px-2 py-1 rounded-full font-semibold shadow-sm">
-            ★ {obj.rating}
+          <span
+            className="absolute top-3 right-3 text-xs bg-white/90 backdrop-blur text-gray-900 px-2 py-1 rounded-full font-semibold shadow-sm tabular-nums"
+            aria-label={`Рейтинг ${obj.rating} из 5${
+              obj.reviewCount > 0 ? `, отзывов: ${obj.reviewCount}` : ""
+            }`}
+          >
+            <span aria-hidden>★ {obj.rating}</span>
             {obj.reviewCount > 0 && (
-              <span className="text-gray-500 font-normal"> · {obj.reviewCount}</span>
+              <span className="text-gray-500 font-normal" aria-hidden>
+                {" "}
+                · {obj.reviewCount}
+              </span>
             )}
           </span>
         )}
-      </a>
+      </div>
 
-      <div className="p-4 flex flex-col gap-2 flex-1">
-        <a href={cardUrl}>
-          <h3 className="font-semibold text-base leading-snug hover:text-primary-700 transition line-clamp-2">
-            {obj.name}
-          </h3>
-        </a>
+      <div className="p-4 flex flex-col gap-3 flex-1">
+        {/* Название и адрес — одна смысловая группа, поэтому внутри gap-1,
+            а между группами карточки gap-3. */}
+        <div className="flex flex-col gap-1">
+          <a href={cardUrl}>
+            <h3 className="font-semibold text-base leading-snug hover:text-primary-700 transition-colors duration-150 line-clamp-2 text-balance break-words">
+              {obj.name}
+            </h3>
+          </a>
 
-        <div className="text-xs text-gray-500 flex items-center gap-1">
-          <span aria-hidden>📍</span>
-          <span className="truncate">
-            {obj.cityOrDistrict?.name}
-            {obj.region?.name ? `, ${obj.region.name}` : ""}
-          </span>
+          <div className="text-xs text-gray-500 flex items-center gap-1">
+            <span aria-hidden>📍</span>
+            <span className="truncate">
+              {obj.cityOrDistrict?.name}
+              {obj.region?.name ? `, ${obj.region.name}` : ""}
+            </span>
+          </div>
         </div>
 
         {iconAmenities.length > 0 && (
@@ -97,8 +113,7 @@ export function ObjectCard({
             {iconAmenities.map((a) => (
               <span
                 key={a.label}
-                title={a.label}
-                className="inline-flex items-center gap-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 px-2 py-0.5 rounded-full"
+                className="inline-flex items-center gap-1 text-xs bg-gray-50 border border-gray-200 text-gray-700 px-2 py-0.5 rounded-full whitespace-nowrap"
               >
                 <span aria-hidden>{a.icon}</span>
                 <span>{a.label}</span>
@@ -108,22 +123,26 @@ export function ObjectCard({
         )}
 
         {obj.shortDescription && (
-          <p className="text-sm text-gray-600 line-clamp-2">{obj.shortDescription}</p>
+          <p className="text-sm text-gray-600 line-clamp-2 text-pretty">
+            {obj.shortDescription}
+          </p>
         )}
 
-        <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+        <div className="mt-auto flex items-end justify-between gap-2 pt-1">
           <div>
-            {obj.minPrice != null ? (
+            {obj.minPrice ? (
               <>
-                <div className="font-bold text-lg leading-none">
-                  от {obj.minPrice.toLocaleString("ru-RU")} ₽
+                <div className="font-bold text-lg leading-none tabular-nums">
+                  от {obj.minPrice.toLocaleString("ru-RU")}&nbsp;₽
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  1 ночь · до {obj.capacity} гостей
+                  за сутки · до {obj.capacity} гостей
                 </div>
               </>
             ) : (
-              <div className="text-xs text-gray-500">До {obj.capacity} гостей</div>
+              <div className="text-xs text-gray-500">
+                Цена по запросу · до {obj.capacity} гостей
+              </div>
             )}
           </div>
         </div>
@@ -133,7 +152,8 @@ export function ObjectCard({
             href={obj.sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 block text-center bg-primary-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary-700 transition"
+            aria-label={`Посмотреть «${obj.name}» на сайте партнёра (откроется в новой вкладке)`}
+            className="mt-1 block text-center bg-primary-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary-700 transition-[background-color,transform] duration-150 ease-out motion-safe:active:scale-[0.96]"
           >
             Посмотреть
           </a>

@@ -1,4 +1,5 @@
 import type { MapPoint, ObjectListItem } from "@/lib/api";
+import { EmptyResults } from "./EmptyResults";
 import { ListingMap } from "./ListingMap";
 import { ObjectCardWide } from "./ObjectCardWide";
 
@@ -9,18 +10,18 @@ import { ObjectCardWide } from "./ObjectCardWide";
 export function ListingResults({
   objects,
   mapPoints,
+  resetHref,
 }: {
   objects: ObjectListItem[];
   mapPoints: MapPoint[];
+  /** Чистый URL листинга без GET-параметров. Передаётся, только когда фильтры реально стоят. */
+  resetHref?: string;
 }) {
   return (
     <div className="flex gap-6 pb-20 lg:pb-0">
       <div className="w-full lg:w-1/2 min-w-0">
         {objects.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg">Объекты не найдены</p>
-            <p className="text-sm mt-2">Попробуйте изменить параметры поиска</p>
-          </div>
+          <EmptyResults resetHref={resetHref} />
         ) : (
           <div className="flex flex-col gap-4">
             {objects.map((obj) => (

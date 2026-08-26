@@ -145,10 +145,15 @@ export function ObjectDetailView({
                 <Icons.Compass className="w-4 h-4" />
                 {obj.cityOrDistrict?.name}, {obj.region?.name}
               </span>
-              {obj.rating && (
-                <span className="inline-flex items-center gap-1 font-medium text-amber-600">
-                  ★ {obj.rating}
-                  <span className="text-gray-500 font-normal">({obj.reviewCount})</span>
+              {obj.rating != null && (
+                <span
+                  className="inline-flex items-center gap-1 font-medium text-amber-600 tabular-nums"
+                  aria-label={`Рейтинг ${obj.rating} из 5, отзывов: ${obj.reviewCount}`}
+                >
+                  <span aria-hidden>★ {obj.rating}</span>
+                  <span className="text-gray-500 font-normal" aria-hidden>
+                    ({obj.reviewCount})
+                  </span>
                 </span>
               )}
             </div>

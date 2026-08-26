@@ -101,7 +101,11 @@ export async function ListingPage({ regionSlug, segments, page, searchParams }: 
         />
       </Suspense>
 
-      <ListingResults objects={objects} mapPoints={mapPoints} />
+      <ListingResults
+        objects={objects}
+        mapPoints={mapPoints}
+        resetHref={hasFilters ? basePath : undefined}
+      />
 
       <Pagination
         basePath={basePath}

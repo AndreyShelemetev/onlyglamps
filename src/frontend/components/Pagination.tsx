@@ -40,7 +40,7 @@ export function Pagination({
 
   const href = (n: number) => `${pagePath(basePath, n)}${query ? `?${query}` : ""}`;
   const linkClass =
-    "inline-flex items-center justify-center min-w-10 h-10 px-3 rounded-lg border text-sm transition";
+    "inline-flex items-center justify-center min-w-10 h-10 px-3 rounded-lg border text-sm tabular-nums transition-colors duration-150";
 
   return (
     <nav
@@ -51,6 +51,7 @@ export function Pagination({
         <a
           href={href(page - 1)}
           rel="prev"
+          aria-label={`Предыдущая страница, ${page - 1}`}
           className={`${linkClass} border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-700`}
         >
           Назад
@@ -59,7 +60,7 @@ export function Pagination({
 
       {pageWindow(page, totalPages).map((item, i) =>
         item === "gap" ? (
-          <span key={`gap-${i}`} className="px-1 text-gray-400 select-none">
+          <span key={`gap-${i}`} className="px-1 text-gray-500 select-none" aria-hidden>
             …
           </span>
         ) : item === page ? (
@@ -74,6 +75,7 @@ export function Pagination({
           <a
             key={item}
             href={href(item)}
+            aria-label={`Страница ${item}`}
             className={`${linkClass} border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-700`}
           >
             {item}
@@ -85,6 +87,7 @@ export function Pagination({
         <a
           href={href(page + 1)}
           rel="next"
+          aria-label={`Следующая страница, ${page + 1}`}
           className={`${linkClass} border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-700`}
         >
           Вперёд
