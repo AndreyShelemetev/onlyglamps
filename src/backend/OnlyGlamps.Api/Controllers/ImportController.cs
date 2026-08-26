@@ -18,13 +18,15 @@ public class ImportController : ControllerBase
     private readonly GlampingsRfCrawler _crawler;
     private readonly MirturbazCrawler _mirturbazCrawler;
     private readonly VsaunahCrawler _vsaunahCrawler;
+    private readonly NaturalistCrawler _naturalistCrawler;
 
-    public ImportController(ImportService import, GlampingsRfCrawler crawler, MirturbazCrawler mirturbazCrawler, VsaunahCrawler vsaunahCrawler)
+    public ImportController(ImportService import, GlampingsRfCrawler crawler, MirturbazCrawler mirturbazCrawler, VsaunahCrawler vsaunahCrawler, NaturalistCrawler naturalistCrawler)
     {
         _import = import;
         _crawler = crawler;
         _mirturbazCrawler = mirturbazCrawler;
         _vsaunahCrawler = vsaunahCrawler;
+        _naturalistCrawler = naturalistCrawler;
     }
 
     public class ImportObjectDto
@@ -247,6 +249,63 @@ public class ImportController : ControllerBase
                 skipped = result.Skipped,
                 errors = result.Errors,
                 samples = result.Samples,
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = "upstream fetch failed", detail = ex.Message });
+        }
+        catch (TaskCanceledException ex)
+        {
+            return StatusCode(504, new { error = "upstream timeout", detail = ex.Message });
+        }
+    }
+
+    public class NaturalistCrawlRequestDto : CrawlRequestDto
+    {
+        /// <summary>Дополнять ли найденные у нас карточки данными источника.</summary>
+        public bool EnrichExisting { get; set; } = true;
+
+        /// <summary>
+        /// Разрешить запись в карточки, которые уже не принадлежат системному
+        /// импорт-пользователю (забраны владельцем или опубликованы).
+        /// По умолчанию выключено: такие карточки только сверяются.
+        /// </summary>
+        public bool AllowOwned { get; set; }
+    }
+
+    /// <summary>
+    /// Запускает crawler naturalist.travel → ImportService.
+    /// Новые объекты создаются как Draft; уже существующие дополняются
+    /// (только пустые поля, без перезаписи) — расхождения возвращаются
+    /// в <c>enrichedSamples[].conflicts</c> для ручного решения.
+    /// По умолчанию dryRun=true (ничего не пишем). Лимит карточек: 1..2000.
+    /// </summary>
+    [HttpPost("crawl/naturalist")]
+    public async Task<IActionResult> CrawlNaturalist([FromBody] NaturalistCrawlRequestDto? dto, CancellationToken ct)
+    {
+        dto ??= new NaturalistCrawlRequestDto();
+        try
+        {
+            var result = await _naturalistCrawler.CrawlAsync(
+                offset: Math.Max(0, dto.Offset),
+                limit: Math.Clamp(dto.Limit, 1, 2000),
+                dryRun: dto.DryRun,
+                maxPerRegion: dto.MaxPerRegion is > 0 ? dto.MaxPerRegion : null,
+                delayMs: Math.Clamp(dto.DelayMs ?? 1500, 1000, 15000),
+                enrichExisting: dto.EnrichExisting,
+                allowOwned: dto.AllowOwned,
+                ct);
+            return Ok(new
+            {
+                found = result.Found,
+                imported = result.Imported,
+                enriched = result.Enriched,
+                duplicates = result.Duplicates,
+                skipped = result.Skipped,
+                errors = result.Errors,
+                samples = result.Samples,
+                enrichedSamples = result.EnrichedSamples,
             });
         }
         catch (HttpRequestException ex)
