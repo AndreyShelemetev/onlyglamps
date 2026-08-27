@@ -21,8 +21,15 @@ public class AdminController : ControllerBase
 
     // ===================== OBJECTS =====================
 
-    /// <summary>Значение фильтра источника, означающее «добавлено вручную, без источника».</summary>
+    /// <summary>Фильтр источника: объект заведён вручную, SourceLink отсутствует.</summary>
     public const string NoSourceFilter = "__none__";
+
+    /// <summary>
+    /// Фильтр источника: SourceLink есть, но названия у него нет.
+    /// Отделено от «вручную» специально — это не ручной объект, а недозаполненный,
+    /// и такие надо видеть отдельно, чтобы дочистить.
+    /// </summary>
+    public const string UnnamedSourceFilter = "__unnamed__";
 
     [HttpGet("objects")]
     public async Task<IActionResult> ListObjects(
@@ -47,9 +54,13 @@ public class AdminController : ControllerBase
             query = query.Where(o => o.OwnerId == ownerId.Value);
         if (!string.IsNullOrEmpty(source))
         {
-            query = source == NoSourceFilter
-                ? query.Where(o => o.SourceLink == null || o.SourceLink.SourceName == null)
-                : query.Where(o => o.SourceLink != null && o.SourceLink.SourceName == source);
+            query = source switch
+            {
+                NoSourceFilter => query.Where(o => o.SourceLink == null),
+                UnnamedSourceFilter => query.Where(o => o.SourceLink != null &&
+                    (o.SourceLink.SourceName == null || o.SourceLink.SourceName == "")),
+                _ => query.Where(o => o.SourceLink != null && o.SourceLink.SourceName == source),
+            };
         }
 
         var total = await query.CountAsync();
@@ -84,18 +95,23 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> ListObjectSources()
     {
         var named = await _db.GlampingObjects
-            .Where(o => o.SourceLink != null && o.SourceLink.SourceName != null)
+            .Where(o => o.SourceLink != null && o.SourceLink.SourceName != null && o.SourceLink.SourceName != "")
             .GroupBy(o => o.SourceLink!.SourceName!)
             .Select(g => new { value = g.Key, name = g.Key, count = g.Count() })
             .OrderByDescending(x => x.count)
             .ToListAsync();
 
-        var noSourceCount = await _db.GlampingObjects
-            .CountAsync(o => o.SourceLink == null || o.SourceLink.SourceName == null);
+        var unnamedCount = await _db.GlampingObjects
+            .CountAsync(o => o.SourceLink != null &&
+                (o.SourceLink.SourceName == null || o.SourceLink.SourceName == ""));
+
+        var manualCount = await _db.GlampingObjects.CountAsync(o => o.SourceLink == null);
 
         var result = named.ToList<object>();
-        if (noSourceCount > 0)
-            result.Add(new { value = NoSourceFilter, name = "Без источника", count = noSourceCount });
+        if (unnamedCount > 0)
+            result.Add(new { value = UnnamedSourceFilter, name = "Источник без названия", count = unnamedCount });
+        if (manualCount > 0)
+            result.Add(new { value = NoSourceFilter, name = "Заведены вручную", count = manualCount });
 
         return Ok(result);
     }
