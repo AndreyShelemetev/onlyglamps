@@ -20,8 +20,8 @@ export default function PrivacyPage() {
           доступного по адресу onlyglamps.ru.
         </p>
         <p>
-          Оператор персональных данных: ИП Шелеметьев А.О.<br />
-          Адрес: г. Йошкар-Ола, Прибрежный проезд, 14<br />
+          Оператор персональных данных: Администрация Сервиса OnlyGlamps.<br />
+          Реквизиты оператора предоставляются по запросу.<br />
           Email: <a href="mailto:info@onlyglamps.ru" className="text-primary-600">info@onlyglamps.ru</a>
         </p>
 

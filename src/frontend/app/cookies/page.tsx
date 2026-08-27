@@ -61,7 +61,7 @@ export default function CookiesPage() {
         </p>
 
         <div className="mt-6 p-4 bg-gray-50 rounded-xl text-xs text-gray-500">
-          Контакты: ИП Шелеметьев А.О. · 
+          Контакты:
           <a href="mailto:info@onlyglamps.ru" className="text-primary-600"> info@onlyglamps.ru</a>
         </div>
       </div>

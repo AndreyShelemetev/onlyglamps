@@ -34,7 +34,6 @@ export default function NotFound() {
             info@onlyglamps.ru
           </a>
         </p>
-        <p className="mt-1">г. Йошкар-Ола, Прибрежный проезд, 14</p>
       </div>
     </div>
   );

@@ -46,22 +46,6 @@ export default function ContactsPage() {
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-navy-800">Адрес</div>
-                <p className="text-gray-700">
-                  г. Йошкар-Ола,<br />
-                  Прибрежный проезд, 14
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -91,11 +75,10 @@ export default function ContactsPage() {
       <div className="mt-12 p-6 bg-gray-50 rounded-xl">
         <h2 className="text-lg font-semibold text-navy-800 mb-3">О компании</h2>
         <p className="text-gray-600 text-sm leading-relaxed">
-          OnlyGlamps — сервис поиска и бронирования глэмпингов, гостевых домов и бань 
-          для аренды посуточно. Мы помогаем путешественникам находить уникальные места 
-          для отдыха на природе, а владельцам — привлекать гостей. Наш офис расположен 
-          в г. Йошкар-Ола. По всем вопросам вы можете связаться с нами по телефону 
-          8&nbsp;(993)&nbsp;388-07-64 или email info@onlyglamps.ru.
+          OnlyGlamps — сервис поиска и бронирования глэмпингов, гостевых домов и бань
+          для аренды посуточно. Мы помогаем путешественникам находить уникальные места
+          для отдыха на природе, а владельцам — привлекать гостей. По всем вопросам
+          вы можете связаться с нами по email info@onlyglamps.ru.
         </p>
       </div>
     </div>

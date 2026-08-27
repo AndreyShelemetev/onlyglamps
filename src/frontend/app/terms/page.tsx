@@ -15,9 +15,10 @@ export default function TermsPage() {
       <div className="prose prose-gray max-w-none space-y-6 text-gray-700 leading-relaxed text-sm">
         <h2 className="text-lg font-semibold text-navy-800">1. Общие положения</h2>
         <p>
-          Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения 
-          между ИП Шелеметьев А.О. (далее — «Администрация») и пользователем сервиса OnlyGlamps 
-          (далее — «Пользователь»), доступного по адресу onlyglamps.ru (далее — «Сервис»).
+          Настоящее Пользовательское соглашение (далее — «Соглашение») регулирует отношения
+          между администрацией сервиса OnlyGlamps, доступного по адресу onlyglamps.ru
+          (далее соответственно — «Администрация» и «Сервис»), и пользователем Сервиса
+          (далее — «Пользователь»).
         </p>
         <p>
           Использование Сервиса означает полное и безоговорочное принятие Пользователем условий 
@@ -101,7 +102,7 @@ export default function TermsPage() {
         </p>
 
         <div className="mt-6 p-4 bg-gray-50 rounded-xl text-xs text-gray-500">
-          Контакты Администрации: ИП Шелеметьев А.О., г. Йошкар-Ола, Прибрежный проезд, 14 · 
+          Контакты Администрации:
           <a href="mailto:info@onlyglamps.ru" className="text-primary-600"> info@onlyglamps.ru</a>
         </div>
       </div>

@@ -136,15 +136,12 @@ export default function RootLayout({
                   <li>
                     <a href="mailto:info@onlyglamps.ru" className="hover:text-white transition">info@onlyglamps.ru</a>
                   </li>
-                  <li className="text-navy-500">
-                    г. Йошкар-Ола,<br />Прибрежный проезд, 14
-                  </li>
                 </ul>
               </div>
             </div>
             <div className="mt-8 pt-6 border-t border-navy-800 flex flex-col sm:flex-row justify-between gap-2 text-xs text-navy-500">
               <span>&copy; {new Date().getFullYear()} OnlyGlamps. Все права защищены.</span>
-              <span>ИП Шелеметьев А.О. | info@onlyglamps.ru</span>
+              <span>info@onlyglamps.ru</span>
             </div>
           </div>
         </footer>
