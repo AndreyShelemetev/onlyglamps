@@ -6,7 +6,24 @@ import { ObjectTabs } from "./ObjectTabs";
 import { Accordion } from "./Tabs";
 import { AmenityIcon, Icons } from "./AmenityIcon";
 import { splitDescriptionByH3 } from "@/lib/desc";
+import { SITE_URL } from "@/lib/seo";
 import { ObjectLinkBlock, RegionLinkBlock } from "./InternalLinkBlocks";
+
+/**
+ * Наш ObjectType.slug → тип schema.org.
+ *
+ * Все они — подтипы LodgingBusiness из открытого словаря. VacationRental
+ * сюда не входит намеренно: это закрытая программа Google, и её разметка
+ * помечается как invalid у всех, кто не прошёл онбординг партнёра.
+ */
+const SCHEMA_TYPE_BY_OBJECT_TYPE: Record<string, string> = {
+  "glempingi": "Campground",
+  "gostevye-doma": "BedAndBreakfast",
+  "bazy-otdykha": "Resort",
+  "park-oteli": "Resort",
+  "kottedzhi": "LodgingBusiness",
+  "bani": "LodgingBusiness",
+};
 
 export function ObjectDetailView({
   obj,
@@ -73,22 +90,94 @@ export function ObjectDetailView({
       : null;
 
   // ── JSON-LD
+  //
+  // Тип НЕ VacationRental: это закрытая программа Google, её разметка
+  // валидна только у партнёров, прошедших онбординг, и требует
+  // containsPlace, identifier и минимум 8 изображений. Search Console
+  // помечал такие страницы как invalid независимо от полноты данных.
+  // LodgingBusiness и его подтипы — открытый словарь, который проходит
+  // валидацию и соответствует docs/competitor-import-mapping.md.
+  const schemaType = SCHEMA_TYPE_BY_OBJECT_TYPE[obj.objectType?.slug] ?? "LodgingBusiness";
+  const canonicalUrl = `${SITE_URL}/${obj.region.slug}/${obj.cityOrDistrict.slug}/${obj.slug}-${obj.id}/`;
+  const photoUrls = (obj.photos ?? [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((p) => p.url)
+    .filter(Boolean);
+  const minPrice = obj.tariffs?.length
+    ? Math.min(...obj.tariffs.map((t) => t.price).filter((p) => p > 0))
+    : null;
+
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "VacationRental",
+    "@type": schemaType,
+    "@id": canonicalUrl,
     name: obj.name,
-    description: obj.shortDescription,
-    address: obj.address,
+    url: canonicalUrl,
+    ...(obj.shortDescription ? { description: obj.shortDescription } : {}),
+    // image обязателен для любого типа и раньше не отдавался вовсе.
+    ...(photoUrls.length > 0 ? { image: photoUrls } : {}),
+    address: {
+      "@type": "PostalAddress",
+      ...(obj.address ? { streetAddress: obj.address } : {}),
+      addressLocality: obj.cityOrDistrict?.name,
+      addressRegion: obj.region?.name,
+      addressCountry: "RU",
+    },
     ...(obj.latitude && obj.longitude
       ? { geo: { "@type": "GeoCoordinates", latitude: obj.latitude, longitude: obj.longitude } }
       : {}),
-    ...(obj.rating
+    ...(minPrice && Number.isFinite(minPrice)
+      ? { priceRange: `от ${minPrice.toLocaleString("ru-RU")} ₽` }
+      : {}),
+    ...(obj.checkInTime ? { checkinTime: obj.checkInTime } : {}),
+    ...(obj.checkOutTime ? { checkoutTime: obj.checkOutTime } : {}),
+    ...(obj.capacity > 0
+      ? {
+          occupancy: {
+            "@type": "QuantitativeValue",
+            maxValue: obj.capacity,
+            unitCode: "C62",
+          },
+        }
+      : {}),
+    petsAllowed: obj.petsAllowed,
+    ...(obj.amenities?.length
+      ? {
+          amenityFeature: obj.amenities.map((a) => ({
+            "@type": "LocationFeatureSpecification",
+            name: a.name,
+            value: true,
+          })),
+        }
+      : {}),
+    // Рейтинг и отзывы отдаём только когда они настоящие: разметка
+    // с пустым или синтетическим рейтингом — повод для ручных санкций.
+    ...(obj.rating && obj.reviewCount > 0
       ? {
           aggregateRating: {
             "@type": "AggregateRating",
             ratingValue: obj.rating,
             reviewCount: obj.reviewCount,
+            bestRating: 5,
+            worstRating: 1,
           },
+        }
+      : {}),
+    ...(obj.reviews?.length
+      ? {
+          review: obj.reviews.slice(0, 5).map((r) => ({
+            "@type": "Review",
+            reviewRating: {
+              "@type": "Rating",
+              ratingValue: r.rating,
+              bestRating: 5,
+              worstRating: 1,
+            },
+            author: { "@type": "Person", name: r.user?.firstName || "Гость" },
+            datePublished: r.createdAt?.slice(0, 10),
+            ...(r.text ? { reviewBody: r.text } : {}),
+          })),
         }
       : {}),
   };
