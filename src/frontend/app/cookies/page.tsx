@@ -62,8 +62,7 @@ export default function CookiesPage() {
 
         <div className="mt-6 p-4 bg-gray-50 rounded-xl text-xs text-gray-500">
           Контакты: ИП Шелеметьев А.О. · 
-          <a href="mailto:info@onlyglamps.ru" className="text-primary-600"> info@onlyglamps.ru</a> · 
-          <a href="tel:+79933880764" className="text-primary-600"> 8 (993) 388-07-64</a>
+          <a href="mailto:info@onlyglamps.ru" className="text-primary-600"> info@onlyglamps.ru</a>
         </div>
       </div>
     </div>

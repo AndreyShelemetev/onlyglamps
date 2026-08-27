@@ -22,8 +22,7 @@ export default function PrivacyPage() {
         <p>
           Оператор персональных данных: ИП Шелеметьев А.О.<br />
           Адрес: г. Йошкар-Ола, Прибрежный проезд, 14<br />
-          Email: <a href="mailto:info@onlyglamps.ru" className="text-primary-600">info@onlyglamps.ru</a><br />
-          Телефон: <a href="tel:+79933880764" className="text-primary-600">8 (993) 388-07-64</a>
+          Email: <a href="mailto:info@onlyglamps.ru" className="text-primary-600">info@onlyglamps.ru</a>
         </p>
 
         <h2 className="text-lg font-semibold text-navy-800">2. Какие данные мы собираем</h2>

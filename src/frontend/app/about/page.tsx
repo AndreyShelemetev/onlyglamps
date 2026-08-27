@@ -45,7 +45,6 @@ export default function AboutPage() {
         <div className="mt-8 p-6 bg-gray-50 rounded-xl">
           <h3 className="text-lg font-semibold text-navy-800 mb-2">Контакты</h3>
           <p className="text-sm text-gray-600">
-            Телефон: <a href="tel:+79933880764" className="text-primary-600 hover:underline">8 (993) 388-07-64</a><br />
             Email: <a href="mailto:info@onlyglamps.ru" className="text-primary-600 hover:underline">info@onlyglamps.ru</a><br />
             Адрес: г. Йошкар-Ола, Прибрежный проезд, 14
           </p>

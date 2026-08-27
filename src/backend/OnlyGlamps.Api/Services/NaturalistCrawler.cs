@@ -65,6 +65,36 @@ public class NaturalistCrawler
         ("tip-dom-na-vode", "kottedzhi"),
         ("tip-modulnyy-dom", "kottedzhi"),
         ("tip-zerkalnyy-dom", "kottedzhi"),
+        ("tipa-kapsula", "glempingi"),
+    };
+
+    /// <summary>
+    /// Категории только для обнаружения карточек — тип из них не следует.
+    ///
+    /// Региональные страницы делят каталог географически и достают объекты,
+    /// которые не попали ни в одну типовую категорию. Тип для найденного здесь
+    /// объекта определяется типовой категорией (если он и в ней есть) либо
+    /// маркером в названии; иначе объект пропускается.
+    /// </summary>
+    private static readonly string[] DiscoveryCategories =
+    {
+        "v-altayskom-krae", "v-astrakhanskoy-oblasti", "v-chechenskoy-respublike",
+        "v-chelyabinskoy-oblasti", "v-irkutskoy-oblasti", "v-kabardino-balkarskoy-respublike",
+        "v-kaliningradskoy-oblasti", "v-kaluzhskoy-oblasti", "v-kamchatskom-krae",
+        "v-karachaevo-cherkesskoy-respublike", "v-khabarovskom-krae", "v-kostromskoy-oblasti",
+        "v-krasnodarskom-krae", "v-krasnoyarskom-krae", "v-leningradskoy-oblasti",
+        "v-lipetskoy-oblasti", "v-moskovskoy-oblasti", "v-murmanskoy-oblasti",
+        "v-nizhegorodskoy-oblasti", "v-novgorodskoy-oblasti", "v-novosibirskoy-oblasti",
+        "v-permskom-krae", "v-pskovskoy-oblasti", "v-respublike-adygeya",
+        "v-respublike-altay", "v-respublike-bashkortostan", "v-respublike-buryatiya",
+        "v-respublike-dagestan", "v-respublike-ingushetiya", "v-respublike-kareliya",
+        "v-respublike-komi", "v-respublike-krym", "v-respublike-severnoy-osetii-alanii",
+        "v-respublike-tatarstan", "v-rostovskoy-oblasti", "v-ryazanskoy-oblasti",
+        "v-samarskoy-oblasti", "v-saratovskoy-oblasti", "v-smolenskoy-oblasti",
+        "v-stavropolskom-krae", "v-sverdlovskoy-oblasti", "v-tulskoy-oblasti",
+        "v-tverskoy-oblasti", "v-tyumenskoy-oblasti", "v-udmurtskoy-respublike",
+        "v-volgogradskoy-oblasti", "v-vologodskoy-oblasti", "v-voronezhskoy-oblasti",
+        "v-yaroslavskoy-oblasti", "vo-vladimirskoy-oblasti",
     };
 
     /// <summary>Фоллбек по названию, когда объект не попал ни в одну категорию.</summary>
@@ -185,10 +215,13 @@ public class NaturalistCrawler
         @"\s*\([^)]*\bкм\b[^)]*\)\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    // Карта «slug карточки → наш тип» тяжело строится (≈19 запросов),
+    /// <summary>Индекс каталога: какие карточки есть и какого они типа.</summary>
+    public record CatalogIndex(Dictionary<string, string> TypeBySlug, HashSet<string> AllSlugs);
+
+    // Индекс тяжело строится (≈70 запросов по ~1.7 МБ),
     // поэтому переживает отдельные вызовы CrawlAsync.
     private static readonly SemaphoreSlim TypeMapLock = new(1, 1);
-    private static Dictionary<string, string>? _typeMapCache;
+    private static CatalogIndex? _catalogCache;
     private static DateTime _typeMapLoadedAt = DateTime.MinValue;
     private static readonly TimeSpan TypeMapTtl = TimeSpan.FromHours(6);
 
@@ -258,9 +291,9 @@ public class NaturalistCrawler
     /// категорию.
     /// </summary>
     public async Task<List<string>> FetchObjectUrlsAsync(
-        IReadOnlyDictionary<string, string> typeMap, CancellationToken ct = default)
+        CatalogIndex index, CancellationToken ct = default)
     {
-        var slugs = new List<string>(typeMap.Keys);
+        var slugs = new List<string>(index.AllSlugs);
 
         try
         {
@@ -290,57 +323,87 @@ public class NaturalistCrawler
     /// Неполную карту НЕ кэшируем: иначе один оборванный прогон отравляет
     /// последующие, и карточки массово уходят в «тип не определён».
     /// </summary>
-    public async Task<Dictionary<string, string>> LoadTypeMapAsync(int delayMs, CancellationToken ct = default)
+    public async Task<CatalogIndex> LoadTypeMapAsync(int delayMs, CancellationToken ct = default)
     {
-        if (_typeMapCache is { Count: > 0 } && DateTime.UtcNow - _typeMapLoadedAt < TypeMapTtl)
-            return _typeMapCache;
+        if (_catalogCache is { AllSlugs.Count: > 0 } && DateTime.UtcNow - _typeMapLoadedAt < TypeMapTtl)
+            return _catalogCache;
 
         await TypeMapLock.WaitAsync(ct);
         try
         {
-            if (_typeMapCache is { Count: > 0 } && DateTime.UtcNow - _typeMapLoadedAt < TypeMapTtl)
-                return _typeMapCache;
+            if (_catalogCache is { AllSlugs.Count: > 0 } && DateTime.UtcNow - _typeMapLoadedAt < TypeMapTtl)
+                return _catalogCache;
 
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var all = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var failed = 0;
-            foreach (var (category, typeSlug) in TypeCategories)
+
+            async Task<List<string>?> ReadCategoryAsync(string category)
             {
-                ct.ThrowIfCancellationRequested();
                 try
                 {
-                    var html = await _http.GetStringAsync($"{BaseUrl}/catalog/{category}/", ct);
-                    var slugs = MapItemHrefRx.Matches(html)
+                    // guests=1 снимает отсечку по вместимости: без него выдача
+                    // рассчитана на 2 гостей и часть каталога не показывается.
+                    var html = await _http.GetStringAsync($"{BaseUrl}/catalog/{category}/?guests=1", ct);
+                    return MapItemHrefRx.Matches(html)
                         .Select(m => m.Groups["slug"].Value)
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList();
-                    foreach (var slug in slugs)
-                        map.TryAdd(slug, typeSlug);
-                    _log.LogInformation(
-                        "Naturalist type map: /{Category}/ -> {Count} карточек ({Type})",
-                        category, slugs.Count, typeSlug);
                 }
                 catch (Exception ex)
                 {
                     failed++;
                     _log.LogWarning(ex, "Naturalist: не удалось прочитать категорию {Category}", category);
+                    return null;
                 }
+            }
 
+            foreach (var (category, typeSlug) in TypeCategories)
+            {
+                ct.ThrowIfCancellationRequested();
+                var slugs = await ReadCategoryAsync(category);
+                if (slugs != null)
+                {
+                    foreach (var slug in slugs)
+                    {
+                        map.TryAdd(slug, typeSlug);
+                        all.Add(slug);
+                    }
+                    _log.LogInformation(
+                        "Naturalist type map: /{Category}/ -> {Count} карточек ({Type})",
+                        category, slugs.Count, typeSlug);
+                }
                 await Task.Delay(delayMs, ct);
             }
 
-            if (failed == 0 && map.Count > 0)
+            foreach (var category in DiscoveryCategories)
             {
-                _typeMapCache = map;
+                ct.ThrowIfCancellationRequested();
+                var slugs = await ReadCategoryAsync(category);
+                if (slugs != null)
+                {
+                    var added = slugs.Count(s => all.Add(s));
+                    _log.LogInformation(
+                        "Naturalist discovery: /{Category}/ -> {Count} карточек, новых {Added}",
+                        category, slugs.Count, added);
+                }
+                await Task.Delay(delayMs, ct);
+            }
+
+            var index = new CatalogIndex(map, all);
+            if (failed == 0 && all.Count > 0)
+            {
+                _catalogCache = index;
                 _typeMapLoadedAt = DateTime.UtcNow;
             }
             else
             {
                 _log.LogWarning(
-                    "Naturalist: карта типов неполная ({Failed} категорий не прочитано) — не кэшируем",
+                    "Naturalist: индекс каталога неполный ({Failed} категорий не прочитано) — не кэшируем",
                     failed);
             }
 
-            return map;
+            return index;
         }
         finally
         {
@@ -473,8 +536,9 @@ public class NaturalistCrawler
         bool allowOwned = false,
         CancellationToken ct = default)
     {
-        var typeMap = await LoadTypeMapAsync(delayMs, ct);
-        var urls = await FetchObjectUrlsAsync(typeMap, ct);
+        var index = await LoadTypeMapAsync(delayMs, ct);
+        var typeMap = index.TypeBySlug;
+        var urls = await FetchObjectUrlsAsync(index, ct);
         var batch = urls.Skip(offset).Take(limit).ToList();
 
         var imported = 0;

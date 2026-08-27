@@ -9,6 +9,7 @@ import {
   adminArchiveObject,
   adminGetRegions,
   adminGetTypes,
+  adminGetObjectSources,
   adminBulkUpdateObjectStatus,
 } from "@/lib/dashboard-api";
 
@@ -25,11 +26,12 @@ export default function AdminObjectsPage() {
   const [objects, setObjects] = useState<any[]>([]);
   const [regions, setRegions] = useState<any[]>([]);
   const [types, setTypes] = useState<any[]>([]);
+  const [sources, setSources] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({ status: "", type: "", region: "" });
+  const [filters, setFilters] = useState({ status: "", type: "", region: "", source: "" });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -63,12 +65,14 @@ export default function AdminObjectsPage() {
 
   async function loadReferenceData() {
     try {
-      const [regionsData, typesData] = await Promise.all([
+      const [regionsData, typesData, sourcesData] = await Promise.all([
         adminGetRegions(token!),
         adminGetTypes(token!),
+        adminGetObjectSources(token!),
       ]);
       setRegions(Array.isArray(regionsData) ? regionsData : []);
       setTypes(Array.isArray(typesData) ? typesData : []);
+      setSources(Array.isArray(sourcesData) ? sourcesData : []);
     } catch {
       // Keep list usable even when dictionary endpoints fail.
     }
@@ -213,6 +217,20 @@ export default function AdminObjectsPage() {
         </select>
 
         <select
+          value={filters.source}
+          onChange={(e) => applyFilter("source", e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+          aria-label="Источник объекта"
+        >
+          <option value="">Все источники</option>
+          {sources.map((s: any) => (
+            <option key={s.value} value={s.value}>
+              {s.name} ({s.count})
+            </option>
+          ))}
+        </select>
+
+        <select
           value={String(pageSize)}
           onChange={(e) => {
             setPageSize(Number(e.target.value));
@@ -302,6 +320,25 @@ export default function AdminObjectsPage() {
                         <span>Владелец: {obj.owner?.firstName} {obj.owner?.lastName}</span>
                         <span>Фото: {obj.photoCount}</span>
                         <span>Обновлён: {new Date(obj.updatedAt).toLocaleDateString("ru")}</span>
+                        <span>
+                          Источник:{" "}
+                          {obj.source ? (
+                            obj.sourceUrl ? (
+                              <a
+                                href={obj.sourceUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary-700 hover:underline"
+                              >
+                                {obj.source}
+                              </a>
+                            ) : (
+                              obj.source
+                            )
+                          ) : (
+                            "вручную"
+                          )}
+                        </span>
                       </div>
                       {obj.moderationComment && (
                         <div className="mt-1 text-xs text-red-600">Комментарий: {obj.moderationComment}</div>

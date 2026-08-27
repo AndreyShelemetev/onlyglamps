@@ -134,9 +134,6 @@ export default function RootLayout({
                 <h4 className="font-semibold text-white mb-3">Контакты</h4>
                 <ul className="space-y-1.5">
                   <li>
-                    <a href="tel:+79933880764" className="hover:text-white transition">8 (993) 388-07-64</a>
-                  </li>
-                  <li>
                     <a href="mailto:info@onlyglamps.ru" className="hover:text-white transition">info@onlyglamps.ru</a>
                   </li>
                   <li className="text-navy-500">

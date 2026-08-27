@@ -29,12 +29,6 @@ export default function NotFound() {
       <div className="p-6 bg-gray-50 rounded-xl text-sm text-gray-500">
         <p className="font-medium text-navy-700 mb-2">Нужна помощь?</p>
         <p>
-          Телефон:{" "}
-          <a href="tel:+79933880764" className="text-primary-600 hover:underline">
-            8 (993) 388-07-64
-          </a>
-        </p>
-        <p>
           Email:{" "}
           <a href="mailto:info@onlyglamps.ru" className="text-primary-600 hover:underline">
             info@onlyglamps.ru

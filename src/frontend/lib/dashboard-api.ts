@@ -173,6 +173,12 @@ export async function adminGetTypes(token: string) {
   return safeJson(res);
 }
 
+/** Источники, из которых заведены объекты, с количеством. `__none__` — заведённые вручную. */
+export async function adminGetObjectSources(token: string) {
+  const res = await authFetch("/admin/objects/sources", token);
+  return safeJson(res);
+}
+
 export async function adminCreateType(token: string, data: any) {
   const res = await authFetch("/admin/types", token, { method: "POST", body: JSON.stringify(data) });
   return safeJson(res);

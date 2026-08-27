@@ -60,7 +60,6 @@ export default function OwnersPage() {
 
         <div className="mt-8 p-6 bg-gray-50 rounded-xl text-sm text-gray-600">
           <strong>Нужна помощь?</strong> Свяжитесь с нами:<br />
-          Телефон: <a href="tel:+79933880764" className="text-primary-600 hover:underline">8 (993) 388-07-64</a> · 
           Email: <a href="mailto:info@onlyglamps.ru" className="text-primary-600 hover:underline">info@onlyglamps.ru</a>
         </div>
       </div>

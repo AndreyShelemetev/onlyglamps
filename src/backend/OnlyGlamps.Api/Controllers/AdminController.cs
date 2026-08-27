@@ -21,12 +21,16 @@ public class AdminController : ControllerBase
 
     // ===================== OBJECTS =====================
 
+    /// <summary>Значение фильтра источника, означающее «добавлено вручную, без источника».</summary>
+    public const string NoSourceFilter = "__none__";
+
     [HttpGet("objects")]
     public async Task<IActionResult> ListObjects(
         [FromQuery] string? status = null,
         [FromQuery] string? type = null,
         [FromQuery] string? region = null,
         [FromQuery] int? ownerId = null,
+        [FromQuery] string? source = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
@@ -41,6 +45,12 @@ public class AdminController : ControllerBase
             query = query.Where(o => o.Region.Slug == region);
         if (ownerId.HasValue)
             query = query.Where(o => o.OwnerId == ownerId.Value);
+        if (!string.IsNullOrEmpty(source))
+        {
+            query = source == NoSourceFilter
+                ? query.Where(o => o.SourceLink == null || o.SourceLink.SourceName == null)
+                : query.Where(o => o.SourceLink != null && o.SourceLink.SourceName == source);
+        }
 
         var total = await query.CountAsync();
         var objects = await query
@@ -57,11 +67,37 @@ public class AdminController : ControllerBase
                 o.UpdatedAt, o.CreatedAt,
                 PhotoCount = o.Photos.Count,
                 TariffCount = o.Tariffs.Count,
-                o.ModerationComment, o.ModeratedAt
+                o.ModerationComment, o.ModeratedAt,
+                Source = o.SourceLink != null ? o.SourceLink.SourceName : null,
+                SourceUrl = o.SourceLink != null ? o.SourceLink.SourceUrl : null
             })
             .ToListAsync();
 
         return Ok(new { data = objects, total, page, pageSize });
+    }
+
+    /// <summary>
+    /// Справочник источников для фильтра в админке: откуда взяты объекты
+    /// и сколько их. Объекты без SourceLink отдаются как <c>__none__</c>.
+    /// </summary>
+    [HttpGet("objects/sources")]
+    public async Task<IActionResult> ListObjectSources()
+    {
+        var named = await _db.GlampingObjects
+            .Where(o => o.SourceLink != null && o.SourceLink.SourceName != null)
+            .GroupBy(o => o.SourceLink!.SourceName!)
+            .Select(g => new { value = g.Key, name = g.Key, count = g.Count() })
+            .OrderByDescending(x => x.count)
+            .ToListAsync();
+
+        var noSourceCount = await _db.GlampingObjects
+            .CountAsync(o => o.SourceLink == null || o.SourceLink.SourceName == null);
+
+        var result = named.ToList<object>();
+        if (noSourceCount > 0)
+            result.Add(new { value = NoSourceFilter, name = "Без источника", count = noSourceCount });
+
+        return Ok(result);
     }
 
     [HttpGet("objects/{id:int}")]
