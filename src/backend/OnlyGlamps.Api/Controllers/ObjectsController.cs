@@ -37,7 +37,9 @@ public class ObjectsController : ControllerBase
         if (page.HasValue)
         {
             var currentPage = Math.Max(1, page.Value);
-            var currentPageSize = Math.Clamp(pageSize, 1, 200);
+            // Потолок поднят с 200: карта тянет весь каталог порциями, и при
+            // 15 тысячах объектов каждая лишняя сотня — это лишний round-trip.
+            var currentPageSize = Math.Clamp(pageSize, 1, 1000);
             query = query
                 .Skip((currentPage - 1) * currentPageSize)
                 .Take(currentPageSize);
@@ -58,6 +60,10 @@ public class ObjectsController : ControllerBase
                 MainPhotoUrl = o.Photos.OrderBy(p => p.SortOrder).Select(p => p.Url).FirstOrDefault(),
             })
             .ToListAsync();
+
+        // Точки карты — публичные и меняются редко, а весит набор мегабайты.
+        // Без этого заголовка браузер тянет их заново при каждом открытии /map/.
+        Response.Headers.CacheControl = "public, max-age=300, stale-while-revalidate=3600";
 
         return Ok(points);
     }

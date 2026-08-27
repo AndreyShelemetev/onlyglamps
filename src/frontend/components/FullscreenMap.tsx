@@ -10,6 +10,15 @@ declare global {
   }
 }
 
+/**
+ * Размер порции при догрузке точек карты.
+ *
+ * Набор целиком — это мегабайты и десятки тысяч точек, поэтому берём его
+ * крупными кусками: при 80 на запрос выходило почти две сотни round-trip'ов
+ * на каждое открытие карты. Верхний предел на стороне API — 1000.
+ */
+const MAP_CHUNK_SIZE = 1000;
+
 interface ObjectType {
   id: number;
   name: string;
@@ -305,23 +314,30 @@ export function FullscreenMap({
 
     async function loadMorePoints() {
       setIsLoadingPoints(true);
-      let page = initialPointsFiltered || points.length === 0 ? 1 : 2;
+
+      // Первая порция уже отрисована сервером, дальше добираем остальное.
+      // Порция крупная: набор целиком — это мегабайты, и каждый лишний
+      // round-trip заметен. Ответы кэшируются браузером (Cache-Control
+      // на эндпоинте), поэтому повторное открытие карты идёт из кэша,
+      // без сети и без пересоздания точек с нуля.
+      // Идём страницами подряд с первой. Отрисованные сервером точки попадут
+      // в первую порцию повторно — mergePoints их схлопнет по id, зато нет
+      // арифметики со смещением, которая легко разъезжается.
+      let page = 1;
 
       while (!cancelled) {
         const params = new URLSearchParams({
           page: String(page),
-          pageSize: String(initialPageSize),
+          pageSize: String(MAP_CHUNK_SIZE),
         });
-        const res = await fetch(`/api/objects/map-points?${params.toString()}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/objects/map-points?${params.toString()}`);
         if (!res.ok) break;
 
         const chunk = await res.json();
         if (!Array.isArray(chunk) || chunk.length === 0) break;
 
         mergePoints(chunk);
-        if (chunk.length < initialPageSize) break;
+        if (chunk.length < MAP_CHUNK_SIZE) break;
 
         page += 1;
         await new Promise((resolve) => window.setTimeout(resolve, 80));
@@ -337,7 +353,7 @@ export function FullscreenMap({
     return () => {
       cancelled = true;
     };
-  }, [initialPageSize, initialPointsFiltered, mergePoints, points.length]);
+  }, [initialPointsFiltered, mergePoints, points.length]);
 
   const setFilter = (typeSlug: string | null) => {
     setActiveFilter(typeSlug);
