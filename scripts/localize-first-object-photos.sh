@@ -206,10 +206,13 @@ upload_webp() {
   local object_key="$2"
   local tmp_name="onlyglamps-upload-$(basename "$local_file")"
 
-  docker compose cp "$local_file" "$STORAGE_SERVICE:/tmp/$tmp_name" >/dev/null
+  # </dev/null обязателен: без него `docker compose exec -T` читает stdin
+  # вызывающего цикла и съедает оставшиеся строки выборки — скрипт
+  # обрабатывал ровно одну фотографию за запуск при любом LIMIT.
+  docker compose cp "$local_file" "$STORAGE_SERVICE:/tmp/$tmp_name" >/dev/null </dev/null
   docker compose exec -T "$STORAGE_SERVICE" sh -c \
     'mc cp --attr "Content-Type=image/webp;Cache-Control=public,max-age=31536000,immutable" "/tmp/'"$tmp_name"'" "local/'"$BUCKET"'/'"$object_key"'" >/dev/null &&
-     rm -f "/tmp/'"$tmp_name"'"'
+     rm -f "/tmp/'"$tmp_name"'"' </dev/null
 }
 
 update_photo_url() {
@@ -226,7 +229,14 @@ clear_photo_url() {
   psql_query "UPDATE \"ObjectPhotos\" SET \"Url\" = '' WHERE \"Id\" = $photo_id;" >/dev/null
 }
 
-printf "%s\n" "$rows" | while IFS=$'\t' read -r object_id photo_id object_name alt old_url source_name source_url; do
+total_rows="$(printf "%s\n" "$rows" | grep -c .)"
+done_count=0
+failed_count=0
+
+# Читаем через дескриптор 3, а не через stdin: любая команда в теле цикла,
+# которая захочет прочитать stdin, иначе проглотит остаток выборки.
+# Заодно цикл выполняется в текущей оболочке, и счётчики переживают итерации.
+while IFS=$'\t' read -r object_id photo_id object_name alt old_url source_name source_url <&3; do
   object_dir="$WORK_DIR/object-$object_id-photo-$photo_id"
   mkdir -p "$object_dir"
 
@@ -237,10 +247,12 @@ printf "%s\n" "$rows" | while IFS=$'\t' read -r object_id photo_id object_name a
   full_file="$object_dir/full-${FULL_WIDTH}.webp"
   thumb_file="$object_dir/thumb-${THUMB_WIDTH}.webp"
 
-  echo "Processing object #$object_id photo #$photo_id"
-  if ! curl --fail --location --silent --show-error --max-time 45 --retry 2 "$old_url" --output "$raw_file"; then
+  done_count=$((done_count + 1))
+  echo "[$done_count/$total_rows] object #$object_id photo #$photo_id"
+  if ! curl --fail --location --silent --show-error --max-time 45 --retry 2 "$old_url" --output "$raw_file" </dev/null; then
     if [[ "$ON_DOWNLOAD_ERROR" == "skip" ]]; then
-      echo "Skipping object #$object_id photo #$photo_id: download failed"
+      echo "  пропуск: скачать не удалось"
+      failed_count=$((failed_count + 1))
       clear_photo_url "$photo_id"
       printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
         "$object_id" "$photo_id" "$object_name" "$alt" "$old_url" "$source_name" "$source_url" "DOWNLOAD_FAILED" >> "$MANIFEST"
@@ -283,6 +295,11 @@ printf "%s\n" "$rows" | while IFS=$'\t' read -r object_id photo_id object_name a
 
   printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
     "$object_id" "$photo_id" "$object_name" "$alt" "$old_url" "$source_name" "$source_url" "$new_url" >> "$MANIFEST"
-done
+
+  # Промежуточные файлы удаляем сразу: на полном прогоне это десятки гигабайт.
+  rm -rf "$object_dir"
+done 3< <(printf "%s\n" "$rows")
+
+echo "Обработано: $((done_count - failed_count)) из $total_rows, не скачалось: $failed_count"
 
 echo "Finished. Manifest: $MANIFEST"
