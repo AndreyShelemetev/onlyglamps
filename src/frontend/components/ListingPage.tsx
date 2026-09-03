@@ -15,6 +15,7 @@ import {
 } from "@/lib/listing";
 import { pickFilterParams } from "@/lib/seo";
 import { REGION_INTENTS } from "@/lib/intents";
+import { regionPrepositional } from "@/lib/morph";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { FilterBar } from "./FilterBar";
 import { ListingLinkBlocks } from "./InternalLinkBlocks";
@@ -205,7 +206,7 @@ function RegionSeoFooter({
                     href={`/${regionSlug}/${t.slug}/`}
                     className="text-gray-700 hover:text-primary-700 hover:underline"
                   >
-                    {t.name} в {regionName.replace(/ая$/, "ой").replace(/ий$/, "ом")}
+                    {t.name} в {regionPrepositional(regionName)}
                   </a>
                 </li>
               ))}

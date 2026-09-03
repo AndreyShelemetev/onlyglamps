@@ -6,6 +6,7 @@ import { ListingPage } from "@/components/ListingPage";
 import { ObjectDetailView } from "@/components/ObjectDetailView";
 import { LISTING_PAGE_SIZE, listingMetadata, resolveListing, splitPageSegment } from "@/lib/listing";
 import { INDEX_FOLLOW, pickFilterParams } from "@/lib/seo";
+import { buildMetaDescription, buildObjectTitle } from "@/lib/object-text";
 
 interface Props {
   params: { region: string; slug: string[] };
@@ -53,8 +54,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     if (!region || !obj) return {};
 
     return {
-      title: `${obj.name} — ${obj.objectType.name} в ${region.name}`,
-      description: `Фото, цены, вместимость, удобства, карта, отзывы и свободные даты для отдыха в ${obj.name}.`,
+      title: buildObjectTitle(obj),
+      description: buildMetaDescription(obj),
       alternates: { canonical: objectCanonicalPath(obj) },
       // Карточка индексируется всегда: GET-параметры её содержимое не меняют.
       robots: INDEX_FOLLOW,
