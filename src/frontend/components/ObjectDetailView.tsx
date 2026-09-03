@@ -7,6 +7,7 @@ import { Accordion } from "./Tabs";
 import { AmenityIcon, Icons } from "./AmenityIcon";
 import { splitDescriptionByH3 } from "@/lib/desc";
 import { SITE_URL } from "@/lib/seo";
+import { buildMetaDescription, buildOverviewText } from "@/lib/object-text";
 import { ObjectLinkBlock, RegionLinkBlock } from "./InternalLinkBlocks";
 
 /**
@@ -74,7 +75,10 @@ export function ObjectDetailView({
   const descSections = obj.fullDescription
     ? splitDescriptionByH3(obj.fullDescription)
     : [];
-  const lead = descSections.find((s) => !s.title)?.html ?? "";
+  // Авторское описание есть у единиц объектов. Для остальных вкладка
+  // «Обзор» оставалась пустой — там были только фото. Подставляем текст,
+  // собранный из наших же фактов, а не скопированное описание источника.
+  const lead = descSections.find((s) => !s.title)?.html || buildOverviewText(obj);
   const howToHtml = descSections.find((s) => /как добраться/i.test(s.title))?.html ?? "";
   const nearbyHtml = descSections.find((s) => /поблизости/i.test(s.title))?.html ?? "";
 
@@ -114,7 +118,11 @@ export function ObjectDetailView({
     "@id": canonicalUrl,
     name: obj.name,
     url: canonicalUrl,
-    ...(obj.shortDescription ? { description: obj.shortDescription } : {}),
+    // В description не отдаём obj.shortDescription: у импортированных
+    // объектов там лежит скопированное мета-описание источника
+    // («… – цены, фотографии, описание, бронирование»), которое ничего
+    // не сообщает об объекте и является чужим текстом.
+    description: buildMetaDescription(obj),
     // image обязателен для любого типа и раньше не отдавался вовсе.
     ...(photoUrls.length > 0 ? { image: photoUrls } : {}),
     address: {

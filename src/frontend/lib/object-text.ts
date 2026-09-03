@@ -34,11 +34,28 @@ const AMENITY_SHORT: Record<string, string> = {
  */
 const GUESTS_AFTER_DO = "гостей";
 
+/** Удобства, которые описывают расположение, а не оснащение. */
+const LOCATION_SLUGS: Record<string, string> = {
+  "u-vody": "у воды",
+  "u-lesa": "у леса",
+};
+
+/** Удобства-правила: они попадают в отдельное предложение про правила. */
+const RULE_SLUGS = new Set(["s-detmi", "s-pitomtsami"]);
+
 function amenityPhrases(obj: ObjectDetail, limit: number): string[] {
   return (obj.amenities ?? [])
+    .filter((a) => !RULE_SLUGS.has(a.slug) && !LOCATION_SLUGS[a.slug])
     .map((a) => AMENITY_SHORT[a.slug] ?? a.name.toLowerCase())
     .filter((v, i, arr) => v && arr.indexOf(v) === i)
     .slice(0, limit);
+}
+
+/** «у воды», «у леса» — из них собирается фраза о расположении. */
+function locationPhrases(obj: ObjectDetail): string[] {
+  return (obj.amenities ?? [])
+    .map((a) => LOCATION_SLUGS[a.slug])
+    .filter((v, i, arr): v is string => Boolean(v) && arr.indexOf(v) === i);
 }
 
 function minPrice(obj: ObjectDetail): number | null {
@@ -58,11 +75,22 @@ function placePhrase(obj: ObjectDetail): string {
  * Тип не повторяем, если он уже есть в названии: иначе выходит
  * «Парк-отель «Парк-отель «Вудлэнд Кэмп»»».
  */
+const ACCOMMODATION_NOUNS = [
+  "отель", "дом", "глэмпинг", "коттедж", "база", "усадьба", "вилла",
+  "шале", "апартамент", "кемпинг", "баня", "сауна", "комплекс", "клуб",
+  "хостел", "турбаза", "гостиница", "пансионат", "санаторий", "резиденц",
+  "hotel", "resort", "camp", "house", "village", "park",
+];
+
 function typePrefix(obj: ObjectDetail): string | null {
   const type = obj.objectType?.name;
   if (!type) return null;
   const name = (obj.name ?? "").toLowerCase();
-  return name.includes(type.toLowerCase()) ? null : type;
+  if (name.includes(type.toLowerCase())) return null;
+  // Название уже начинается с обозначения жилья — «Эко-отель Altay Sense».
+  // Подставлять перед ним «Парк-отель» значит написать противоречие.
+  if (ACCOMMODATION_NOUNS.some((n) => name.includes(n))) return null;
+  return type;
 }
 
 function capitalize(value: string): string {
@@ -99,6 +127,63 @@ export function buildMetaDescription(obj: ObjectDetail): string {
     text = cut > 60 ? text.slice(0, cut + 1) : `${text.slice(0, 167)}…`;
   }
   return text;
+}
+
+/**
+ * Развёрнутый текст для вкладки «Обзор» — там, где нет авторского
+ * описания. Собирается из фактов: тип, место, вместимость, спальные
+ * места, площадь, удобства, правила, цена.
+ *
+ * Ни одного придуманного факта: чего нет в данных, того нет и в тексте.
+ * Формулировка одна на весь каталог — вариации по id пробовались, но
+ * любой оборот без предлога ломается о предложный падеж места
+ * («— Калининграде»), а уникальность даёт набор фактов, не перестановка слов.
+ */
+export function buildOverviewText(obj: ObjectDetail): string {
+  const sentences: string[] = [];
+  const place = placePhrase(obj);
+  const type = typePrefix(obj);
+  const subject = type ? `${type} «${obj.name}»` : `«${obj.name}»`;
+
+  const location = locationPhrases(obj);
+  const near = location.length ? `, ${location.join(", ")}` : "";
+
+  if (place) {
+    // Одна форма вместо вариаций: «место» стоит в предложном падеже,
+    // и любой оборот без предлога («— Калининграде») ломается.
+    // Глагол намеренно без рода: «База отдыха … расположен» — ошибка,
+    // а род типа мы не знаем и хранить его негде.
+    sentences.push(`${subject} находится в ${place}${near}.`);
+  } else {
+    sentences.push(`${subject}${near}.`);
+  }
+
+  const capacity: string[] = [];
+  if (obj.capacity > 0) capacity.push(`размещение до ${obj.capacity} ${GUESTS_AFTER_DO}`);
+  if (obj.beds) capacity.push(`${obj.beds} спальных мест`);
+  if (obj.area) capacity.push(`площадь ${obj.area} м²`);
+  if (capacity.length) sentences.push(`${capitalize(capacity.join(", "))}.`);
+
+  const amenities = amenityPhrases(obj, 8);
+  if (amenities.length) {
+    sentences.push(`Доступны: ${amenities.join(", ")}.`);
+  }
+
+  const rules: string[] = [];
+  if (obj.childrenAllowed) rules.push("детьми");
+  if (obj.petsAllowed) rules.push("питомцами");
+  // Предлог один на всё перечисление: «с детьми и с питомцами» — лишнее «с».
+  if (rules.length) sentences.push(`Можно приезжать с ${rules.join(" и ")}.`);
+
+  const times: string[] = [];
+  if (obj.checkInTime) times.push(`заезд с ${obj.checkInTime}`);
+  if (obj.checkOutTime) times.push(`выезд до ${obj.checkOutTime}`);
+  if (times.length) sentences.push(`${capitalize(times.join(", "))}.`);
+
+  const price = minPrice(obj);
+  if (price) sentences.push(`Стоимость от ${price.toLocaleString("ru-RU")} ₽ за сутки.`);
+
+  return sentences.join(" ");
 }
 
 /** Title карточки. H1 — только название, поэтому они гарантированно разные. */
