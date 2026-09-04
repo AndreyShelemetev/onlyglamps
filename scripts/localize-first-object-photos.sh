@@ -34,7 +34,8 @@ Environment:
   OBJECT_ID         Optional exact GlampingObjects.Id filter for a single object.
   DRY_RUN           1 prints selected photos without downloading or updating.
   PROCESSOR         realesrgan or imagemagick. Default: realesrgan.
-  ON_DOWNLOAD_ERROR fail or skip. skip clears the broken first photo URL. Default: skip.
+  ON_DOWNLOAD_ERROR fail or skip. skip deletes the broken first photo record
+                    so the next photo becomes the main one. Default: skip.
   REALESRGAN_BIN    Real-ESRGAN executable. Default: realesrgan-ncnn-vulkan.
   REALESRGAN_MODEL  Real-ESRGAN model name. Default: realesrgan-x4plus.
   REALESRGAN_SCALE  Real-ESRGAN scale. Default: 2.
@@ -224,9 +225,14 @@ update_photo_url() {
   psql_query "UPDATE \"ObjectPhotos\" SET \"Url\" = '$escaped_url' WHERE \"Id\" = $photo_id;" >/dev/null
 }
 
-clear_photo_url() {
+drop_photo() {
   local photo_id="$1"
-  psql_query "UPDATE \"ObjectPhotos\" SET \"Url\" = '' WHERE \"Id\" = $photo_id;" >/dev/null
+  # Раньше URL обнулялся, а запись оставалась. Публичный API берёт главное
+  # фото как Photos.OrderBy(SortOrder).First().Url — и объект показывал
+  # заглушку даже с двумя десятками живых фотографий, потому что первой
+  # по сортировке оставалась пустая строка. Удаляем запись: следующее
+  # фото становится первым.
+  psql_query "DELETE FROM \"ObjectPhotos\" WHERE \"Id\" = $photo_id;" >/dev/null
 }
 
 total_rows="$(printf "%s\n" "$rows" | grep -c .)"
@@ -253,7 +259,7 @@ while IFS=$'\t' read -r object_id photo_id object_name alt old_url source_name s
     if [[ "$ON_DOWNLOAD_ERROR" == "skip" ]]; then
       echo "  пропуск: скачать не удалось"
       failed_count=$((failed_count + 1))
-      clear_photo_url "$photo_id"
+      drop_photo "$photo_id"
       printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
         "$object_id" "$photo_id" "$object_name" "$alt" "$old_url" "$source_name" "$source_url" "DOWNLOAD_FAILED" >> "$MANIFEST"
       continue
